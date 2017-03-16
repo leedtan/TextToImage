@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-#SBATCH --job-name=NewMini3
-#SBATCH --output=NewMini3.out
+#SBATCH --job-name=oneGAN8
+#SBATCH --output=oneGAN8.out
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=48:00:00
@@ -19,6 +19,6 @@ module load scikit-image/intel/0.12.3
 module load scikit-learn/intel/0.18.1
 
 
-python -u trainMiniBatchDisc.py --data_set="flowers"
+python -u trainOneGAN.py --data_set="flowers"
 
 
