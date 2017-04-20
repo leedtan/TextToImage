@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-import modelBig
+import modelCoco
 import argparse
 import pickle
 from os.path import join
@@ -28,7 +28,7 @@ def main():
 	parser.add_argument('--batch_size', type=int, default=64,#LEECHANGE default=64,
 					   help='Batch Size')
 
-	parser.add_argument('--image_size', type=int, default=128,
+	parser.add_argument('--image_size', type=int, default=64,
 					   help='Image Size a, a x a')
 
 	parser.add_argument('--gf_dim', type=int, default=64,
@@ -46,7 +46,7 @@ def main():
 	parser.add_argument('--data_dir', type=str, default="Data",
 					   help='Data Directory')
 
-	parser.add_argument('--learning_rate', type=float,default=.0002,#1e-4 or 1e-5LEECHANGE default=0.0002,
+	parser.add_argument('--learning_rate', type=float,default=1e-4,#1e-4 or 1e-5LEECHANGE default=0.0002,
 					   help='Learning Rate')
 
 	parser.add_argument('--beta1', type=float, default =.5,#LEECHANGE default=0.5,
@@ -61,7 +61,7 @@ def main():
 	parser.add_argument('--resume_model', type=str, default=None,
                        help='Pre-Trained Model Path, to resume from')
 
-	parser.add_argument('--data_set', type=str, default="flowers",
+	parser.add_argument('--data_set', type=str, default="mscoco",
                        help='Dat set: MS-COCO, flowers')
 
 	args = parser.parse_args()
@@ -75,68 +75,23 @@ def main():
 		'gfc_dim' : args.gfc_dim,
 		'caption_vector_length' : args.caption_vector_length
 	}
+	beta2 = .9
 	
-	
-	gan = modelBig.GAN(model_options)
+	gan = modelCoco.GAN(model_options)
 	input_tensors, variables, loss, outputs, checks = gan.build_model()
-	
-	#d_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1).minimize(loss['d_loss'], var_list=variables['d_vars'])
-	#g_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1).minimize(loss['g_loss'], var_list=variables['g_vars'])
 	
 	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
 	gvs = optimizer.compute_gradients(loss['d_loss'], var_list=variables['d_vars'])
 	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
 	d_optim = optimizer.apply_gradients(capped_gvs)
-	d_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1).minimize(loss['d_loss'], var_list=variables['d_vars'])
-	'''
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
-	gvs = optimizer.compute_gradients(loss['d_loss_full'], var_list=variables['d_vars'])
-	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-	d_optim_full = optimizer.apply_gradients(capped_gvs)
+	d_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1,beta2 = beta2).minimize(loss['d_loss'], var_list=variables['d_vars'])
 	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
-	gvs = optimizer.compute_gradients(loss['d_loss_mid'], var_list=variables['d_vars'])
-	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-	d_optim_mid = optimizer.apply_gradients(capped_gvs)
-	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
-	gvs = optimizer.compute_gradients(loss['d_loss_small'], var_list=variables['d_vars'])
-	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-	d_optim_small = optimizer.apply_gradients(capped_gvs)
-	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
-	gvs = optimizer.compute_gradients(loss['d_loss_small_full'], var_list=variables['d_vars'])
-	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-	d_optim_small_full = optimizer.apply_gradients(capped_gvs)
-	'''
-	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
-	gvs = optimizer.compute_gradients(loss['g_loss'], var_list=variables['g_vars'])
-	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-	g_optim = optimizer.apply_gradients(capped_gvs)
-	g_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1).minimize(loss['g_loss'], var_list=variables['g_vars'])
-	'''
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
-	gvs = optimizer.compute_gradients(loss['g_loss_full'], var_list=variables['g_vars'])
-	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-	g_optim_full = optimizer.apply_gradients(capped_gvs)
-	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
-	gvs = optimizer.compute_gradients(loss['g_loss_mid'], var_list=variables['g_vars'])
-	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-	g_optim_mid = optimizer.apply_gradients(capped_gvs)
-	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
-	gvs = optimizer.compute_gradients(loss['g_loss_small'], var_list=variables['g_vars'])
-	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-	g_optim_small = optimizer.apply_gradients(capped_gvs)
-	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
-	gvs = optimizer.compute_gradients(loss['g_loss_small_mid'], var_list=variables['g_vars'])
-	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-	g_optim_small_mid = optimizer.apply_gradients(capped_gvs)
-	'''
-	
+
+	g1_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1,beta2 = beta2).minimize(loss['g1_loss'], var_list=variables['g1_vars'])
+	g2_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1,beta2 = beta2).minimize(loss['g2_loss'], var_list=variables['g2_vars'])
+	g3_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1,beta2 = beta2).minimize(loss['g3_loss'], var_list=variables['g3_vars'])
+	g4_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1,beta2 = beta2).minimize(loss['g4_loss'], var_list=variables['g4_vars'])
+	g5_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1,beta2 = beta2).minimize(loss['g5_loss'], var_list=variables['g5_vars'])
 	sess = tf.InteractiveSession()
 	if prince:
 		sess.run(tf.global_variables_initializer())
@@ -148,7 +103,7 @@ def main():
 		saver.restore(sess, args.resume_model)
 	
 	loaded_data = load_training_data(args.data_dir, args.data_set)
-	init = 1
+	init = 0
 	d_avg_full, d_avg_mid, d_avg_sml = 0,0,0
 	lb = 0#-.3
 	disc_break = -.3
@@ -161,15 +116,16 @@ def main():
 			
 			# DISCR UPDATE
 		
-			sess.run([g_optim],
+			sess.run([g1_optim, g2_optim, g3_optim, g4_optim, g5_optim],
 				feed_dict = {
 					input_tensors['t_real_image'] : real_images,
 					input_tensors['t_real_caption'] : caption_vectors,
 					input_tensors['t_z'] : z_noise,
 					input_tensors['l2reg']: 0
 				})
-			_, _, d_loss, gen, g_loss,  = sess.run(
-				[g_optim, d_optim, loss['d_loss'], outputs['generator'], loss['g_loss']],
+			_, _, _, _, _, _, d_loss, g_loss, img1, img2,img3,img4,img5   = sess.run(
+				[g1_optim, g2_optim, g3_optim, g4_optim, g5_optim, d_optim, loss['d_loss'], loss['g_loss'],
+				outputs['img1'],outputs['img2'], outputs['img3'],outputs['img4'], outputs['img5']],
 				feed_dict = {
 					input_tensors['t_real_image'] : real_images,
 					input_tensors['t_wrong_image'] : wrong_images,
@@ -179,13 +135,22 @@ def main():
 				})
 			
 			
-			if batch_no % 5 == 0:
+			if batch_no % 10 == 0:
 					
 				idx = np.random.randint(1,10)
-				img_full = gen[idx,:,:,:]
+				image1 = img1[idx,:,:,:]
+				image2 = img2[idx,:,:,:]
+				image3 = img3[idx,:,:,:]
+				image4 = img4[idx,:,:,:]
+				image5 = img5[idx,:,:,:]
 				real_full = real_images[idx,:,:,:]
-				scipy.misc.imsave('images_Big3/' + str(i) + '_img_idx:' + str(batch_no) + 'full.jpg',img_full)
-				scipy.misc.imsave('images_Big3/' + str(i) + '_img_idx:' + str(batch_no) + 'areal.jpg',real_full)
+				folder = 'images_Coco1/'
+				scipy.misc.imsave(folder + str(i) + '_img_idx:' + str(batch_no) + 'stage1.jpg',image1)
+				scipy.misc.imsave(folder + str(i) + '_img_idx:' + str(batch_no) + 'stage2.jpg',image2)
+				scipy.misc.imsave(folder + str(i) + '_img_idx:' + str(batch_no) + 'stage3.jpg',image3)
+				scipy.misc.imsave(folder + str(i) + '_img_idx:' + str(batch_no) + 'stage4.jpg',image4)
+				scipy.misc.imsave(folder + str(i) + '_img_idx:' + str(batch_no) + 'stage5.jpg',image5)
+				scipy.misc.imsave(folder + str(i) + '_img_idx:' + str(batch_no) + 'real.jpg',real_full)
 				
 				img_idx += 1
 
@@ -195,15 +160,15 @@ def main():
 			print 'g_loss', g_loss
 			
 				
-			print "LOSSES", d_loss, g_loss, batch_no, i, len(loaded_data['image_list'])/ args.batch_size
+			#print "LOSSES", d_loss, g_loss, batch_no, i, len(loaded_data['image_list'])/ args.batch_size
 			batch_no += 1
 			if (batch_no % args.save_every) == 0:
 				print "Saving Images, Model"
 				#Lee commented the following line out because it crashed. No idea what it was trying to do.
-				#save_for_vis(args.data_dir, real_images, gen, image_files,args.image_size)
-				save_path = saver.save(sess, "Data/Models/latest_model_big3_{}_temp.ckpt".format(args.data_set))
-		if i%5 == 0:
-			save_path = saver.save(sess, "Data/Models/big3_after_{}_epoch_{}.ckpt".format(args.data_set, i))
+				#save_for_vis(args.data_dir, real_images, gen, image_files)
+				save_path = saver.save(sess, "Data/Models/latest_model_stacked1_{}_temp.ckpt".format(args.data_set))
+		if 0:#i%5 == 0:
+			save_path = saver.save(sess, "Data/Models/stacked1_after_{}_epoch_{}.ckpt".format(args.data_set, i))
 
 def load_training_data(data_dir, data_set):
 	if data_set == 'flowers':
@@ -225,22 +190,22 @@ def load_training_data(data_dir, data_set):
 		}
 	
 	else:
-		with open(join(data_dir, 'meta_train.pkl')) as f:
+		with open(join(data_dir, 'coco/meta_train.pkl')) as f:
 			meta_data = pickle.load(f)
 		# No preloading for MS-COCO
 		return meta_data
 
-def save_for_vis(data_dir, real_images, generated_images, image_files,image_size):
+def save_for_vis(data_dir, real_images, generated_images, image_files):
 	
 	shutil.rmtree( join(data_dir, 'samples') )
 	os.makedirs( join(data_dir, 'samples') )
 
 	for i in range(0, real_images.shape[0]):
-		real_image_255 = np.zeros( (image_size,image_size,3), dtype=np.uint8)
+		real_image_255 = np.zeros( (64,64,3), dtype=np.uint8)
 		real_images_255 = (real_images[i,:,:,:])
 		scipy.misc.imsave( join(data_dir, 'samples/{}_{}.jpg'.format(i, image_files[i].split('/')[-1] )) , real_images_255)
 
-		fake_image_255 = np.zeros( (image_size,image_size,3), dtype=np.uint8)
+		fake_image_255 = np.zeros( (64,64,3), dtype=np.uint8)
 		fake_images_255 = (generated_images[i,:,:,:])
 		scipy.misc.imsave(join(data_dir, 'samples/fake_image_{}.jpg'.format(i)), fake_images_255)
 
@@ -248,18 +213,19 @@ def save_for_vis(data_dir, real_images, generated_images, image_files,image_size
 def get_training_batch(batch_no, batch_size, image_size, z_dim, 
 	caption_vector_length, split, data_dir, data_set, loaded_data = None):
 	if data_set == 'mscoco':
-		with h5py.File( join(data_dir, 'tvs/'+split + '_tvs_' + str(batch_no))) as hf:
+		with h5py.File( join(data_dir, 'coco/tvs/'+split + '_tvs_' + str(batch_no))) as hf:
 			caption_vectors = np.array(hf.get('tv'))
 			caption_vectors = caption_vectors[:,0:caption_vector_length]
-		with h5py.File( join(data_dir, 'tvs/'+split + '_tv_image_id_' + str(batch_no))) as hf:
+		with h5py.File( join(data_dir, 'coco/tvs/'+split + '_tv_image_id_' + str(batch_no))) as hf:
 			image_ids = np.array(hf.get('tv'))
 
-		real_images = np.zeros((batch_size, image_size, image_size, 3))
-		wrong_images = np.zeros((batch_size, image_size, image_size, 3))
+		real_images = np.zeros((batch_size, 64, 64, 3))
+		wrong_images = np.zeros((batch_size, 64, 64, 3))
 		
 		image_files = []
+		#Shuffle this enumeration for loop and we fix shuffling problems.
 		for idx, image_id in enumerate(image_ids):
-			image_file = join(data_dir, '%s2014/COCO_%s2014_%.12d.jpg'%(split, split, image_id) )
+			image_file = join(data_dir, 'coco/%s2014/COCO_%s2014_%.12d.jpg'%(split, split, image_id) )
 			image_array = image_processing.load_image_array(image_file, image_size)
 			real_images[idx,:,:,:] = image_array
 			image_files.append(image_file)
@@ -278,12 +244,13 @@ def get_training_batch(batch_no, batch_size, image_size, z_dim,
 		return real_images, wrong_images, caption_vectors, z_noise, image_files
 
 	if data_set == 'flowers':
-		real_images = np.zeros((batch_size, image_size, image_size, 3))
-		wrong_images = np.zeros((batch_size, image_size, image_size, 3))
+		real_images = np.zeros((batch_size, 64, 64, 3))
+		wrong_images = np.zeros((batch_size, 64, 64, 3))
 		captions = np.zeros((batch_size, caption_vector_length))
 
 		cnt = 0
 		image_files = []
+		#caption_text = [None]*batch_size
 		for i in range(batch_no * batch_size, batch_no * batch_size + batch_size):
 			idx = i % len(loaded_data['image_list'])
 			image_file =  join(data_dir, 'flowers/jpg/'+loaded_data['image_list'][idx])
@@ -297,12 +264,13 @@ def get_training_batch(batch_no, batch_size, image_size, z_dim,
 			wrong_images[cnt, :,:,:] = wrong_image_array
 
 			random_caption = random.randint(0,4)
+			#caption_text[i] = random_caption
 			captions[cnt,:] = loaded_data['captions'][ loaded_data['image_list'][idx] ][ random_caption ][0:caption_vector_length]
 			image_files.append( image_file )
 			cnt += 1
 
 		z_noise = np.random.uniform(-1, 1, [batch_size, z_dim])
-		return real_images, wrong_images, captions, z_noise, image_files
+		return real_images, wrong_images, captions, z_noise, image_files#, caption_text
 
 if __name__ == '__main__':
 	main()

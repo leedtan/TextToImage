@@ -58,6 +58,7 @@ class GAN:
 
 		self.d_bn_idx = 0
 		self.g_idx = 0
+		self.g2_idx = 0
 		self.d_idx = 0
 		self.g_bn_idx = 0
 		self.d_bn1 = ops.batch_norm(name='d_bn1')
@@ -116,65 +117,54 @@ class GAN:
 		t_z = tf.placeholder('float32', [self.options['batch_size'], self.options['z_dim']])
 		
 		#fake_image, fake_small_image, fake_mid_image = self.generator(t_z, t_real_caption)
-		fake_image = self.generator(t_z, t_real_caption)
-		with tf.variable_scope('scope_full'):
-			disc_real_image, disc_real_image_logits   = self.discriminator(t_real_image, t_real_caption)
-			disc_wrong_image, disc_wrong_image_logits   = self.discriminator(t_wrong_image, t_real_caption, reuse = True)
-			disc_fake_image, disc_fake_image_logits   = self.discriminator(fake_image, t_real_caption, reuse = True)
+		fake_image1, fake_image2 = self.generator(t_z, t_real_caption)
+		with tf.variable_scope('scope_1'):
+			disc_1_real_image, disc_1_real_image_logits   = self.discriminator1(t_real_image, t_real_caption)
+			disc_1_wrong_image, disc_1_wrong_image_logits   = self.discriminator1(t_wrong_image, t_real_caption, reuse = True)
+			disc_1_fake_image, disc_1_fake_image_logits   = self.discriminator1(fake_image1, t_real_caption, reuse = True)
+		
+		with tf.variable_scope('scope_2'):
+			disc_2_real_image, disc_2_real_image_logits   = self.discriminator2(t_real_image, t_real_caption)
+			disc_2_wrong_image, disc_2_wrong_image_logits   = self.discriminator2(t_wrong_image, t_real_caption, reuse = True)
+			disc_2_fake_image, disc_2_fake_image_logits   = self.discriminator2(fake_image2, t_real_caption, reuse = True)
 		'''
-		with tf.variable_scope('scope_small'):
-			disc_small_real_image, disc_small_real_image_logits   = self.discriminator_small(real_small_image, t_real_caption)
-			disc_small_wrong_image, disc_small_wrong_image_logits   = self.discriminator_small(wrong_small_image, t_real_caption, reuse = True)
-			disc_small_fake_image, disc_small_fake_image_logits   = self.discriminator_small(fake_small_image, t_real_caption, reuse = True)
 		with tf.variable_scope('scope_mid'):
 			disc_mid_real_image, disc_mid_real_image_logits   = self.discriminator_mid(real_mid_image, t_real_caption)
 			disc_mid_wrong_image, disc_mid_wrong_image_logits   = self.discriminator_mid(wrong_mid_image, t_real_caption, reuse = True)
 			disc_mid_fake_image, disc_mid_fake_image_logits   = self.discriminator_mid(fake_mid_image, t_real_caption, reuse = True)
 		'''
 		
-		g_loss_full = tf.reduce_mean(cross_entropy(disc_fake_image_logits, tf.ones_like(disc_fake_image)))
+		g1_loss = tf.reduce_mean(cross_entropy(disc_1_fake_image_logits, tf.ones_like(disc_1_fake_image)))
 		
-		d_loss1 = tf.reduce_mean(cross_entropy(disc_real_image_logits, tf.ones_like(disc_real_image)))
-		d_loss2 = tf.reduce_mean(cross_entropy(disc_wrong_image_logits, tf.zeros_like(disc_wrong_image)))
-		d_loss3 = tf.reduce_mean(cross_entropy(disc_fake_image_logits, tf.zeros_like(disc_fake_image)))
+		d1_loss1 = tf.reduce_mean(cross_entropy(disc_1_real_image_logits, tf.ones_like(disc_1_real_image)))
+		d1_loss2 = tf.reduce_mean(cross_entropy(disc_1_wrong_image_logits, tf.zeros_like(disc_1_wrong_image)))
+		d1_loss3 = tf.reduce_mean(cross_entropy(disc_1_fake_image_logits, tf.zeros_like(disc_1_fake_image)))
+		
+		g2_loss = tf.reduce_mean(cross_entropy(disc_2_fake_image_logits, tf.ones_like(disc_2_fake_image)))
+		
+		d2_loss1 = tf.reduce_mean(cross_entropy(disc_2_real_image_logits, tf.ones_like(disc_2_real_image)))
+		d2_loss2 = tf.reduce_mean(cross_entropy(disc_2_wrong_image_logits, tf.zeros_like(disc_2_wrong_image)))
+		d2_loss3 = tf.reduce_mean(cross_entropy(disc_2_fake_image_logits, tf.zeros_like(disc_2_fake_image)))
 		
 		'''
-		g_loss_small = tf.reduce_mean(cross_entropy(disc_small_fake_image_logits, tf.ones_like(disc_small_fake_image)))
-		
-		d_loss1_small = tf.reduce_mean(cross_entropy(disc_small_real_image_logits, tf.ones_like(disc_small_real_image)))
-		d_loss2_small = tf.reduce_mean(cross_entropy(disc_small_wrong_image_logits, tf.zeros_like(disc_small_wrong_image)))
-		d_loss3_small = tf.reduce_mean(cross_entropy(disc_small_fake_image_logits, tf.zeros_like(disc_small_fake_image)))
-		
-		
 		g_loss_mid = tf.reduce_mean(cross_entropy(disc_mid_fake_image_logits, tf.ones_like(disc_mid_fake_image)))
 
 		d_loss1_mid = tf.reduce_mean(cross_entropy(disc_mid_real_image_logits, tf.ones_like(disc_mid_real_image)))
 		d_loss2_mid = tf.reduce_mean(cross_entropy(disc_mid_wrong_image_logits, tf.zeros_like(disc_mid_wrong_image)))
 		d_loss3_mid = tf.reduce_mean(cross_entropy(disc_mid_fake_image_logits, tf.zeros_like(disc_mid_fake_image)))
 		'''
-		d_loss_full = d_loss3 + d_loss2 + d_loss1
-		'''
-		d_loss_mid = d_loss3_mid + d_loss2_mid + d_loss1_mid
-		d_loss_small = d_loss3_small + d_loss2_small + d_loss1_small
-		d_loss_small_full = d_loss_full + d_loss_small
 		
-		g_loss_small_mid = g_loss_small + g_loss_mid
-		'''
+		
+		d_loss1 = d1_loss1 + d1_loss2 + d1_loss3
+		d_loss2 = d2_loss1 + d2_loss2 + d2_loss3
+
 		t_vars = tf.trainable_variables()
 		d_vars = [var for var in t_vars if 'd_' in var.name]
-		g_vars = [var for var in t_vars if 'g_' in var.name]
+		g1_vars = [var for var in t_vars if 'g1_' in var.name]
+		g2_vars = [var for var in t_vars if 'g2_' in var.name]
+		d_loss = d_loss1 + d_loss2
 		
-		d_l2reg = tf.reduce_mean(pack([tf.reduce_mean(tf.square(var) + tf.pow(var,4)/100.) for var in d_vars]))
-		g_l2reg = tf.reduce_mean(pack([tf.reduce_mean(tf.square(var) + tf.pow(var,4)/100.) for var in g_vars]))
-		
-		d_loss = d_loss1 + d_loss2 + d_loss3# + d_loss1_small  + d_loss2_small + d_loss3_small + \
-		#	d_loss1_mid  + d_loss2_mid + d_loss3_mid# + d_l2reg*l2reg
-		'''
-		d_loss_without_small = d_loss1 + d_loss2 + d_loss3 + \
-			d_loss1_mid  + d_loss2_mid + d_loss3_mid
-		d_loss_without_small_mid = d_loss1 + d_loss2 + d_loss3
-		'''
-		g_loss = g_loss_full# + g_loss_small + g_loss_mid# + g_l2reg*l2reg
+		g_loss = g1_loss + g2_loss
 		
 		self.wgan_clip_1eneg3 = [v.assign(tf.clip_by_value(v, -0.001, 0.001)) for v in d_vars]
 		self.wgan_clip_1eneg2 = [v.assign(tf.clip_by_value(v, -0.01, 0.01)) for v in d_vars]
@@ -191,31 +181,28 @@ class GAN:
 
 		variables = {
 			'd_vars' : d_vars,
-			'g_vars' : g_vars
+			'g1_vars' : g1_vars,
+			'g2_vars' : g2_vars
 		}
 
 		loss = {
-			'g_loss' : g_loss,
+			'g_loss': g_loss,
 			'd_loss' : d_loss,
-			'g_loss_full' : g_loss_full,
-			'd_loss_full' : d_loss_full
+			'g1_loss' : g1_loss,
+			'g2_loss' : g2_loss
 		}
 
 		outputs = {
-			'generator' : fake_image,
-			'real_small_image' : real_small_image,
-			'real_mid_image' : real_mid_image
+			'img1' : fake_image1,
+			'img2' : fake_image2
 		}
 
 		checks = {
 			'd_loss1': d_loss1,
 			'd_loss2': d_loss2,
-			'd_loss3' : d_loss3,
-			'd_loss_full' : d_loss_full,
-			'g_loss_full' : g_loss_full,
-			'disc_real_image_logits' : disc_real_image_logits,
-			'disc_wrong_image_logits' : disc_wrong_image,
-			'disc_fake_image_logits' : disc_fake_image_logits
+			'disc_1_real_image_logits' : disc_1_real_image_logits,
+			'disc_1_wrong_image_logits' : disc_1_wrong_image,
+			'disc_1_fake_image_logits' : disc_1_fake_image_logits
 		}
 		
 		return input_tensors, variables, loss, outputs, checks
@@ -244,28 +231,31 @@ class GAN:
 		s = self.options['image_size']
 		s2, s4, s8, s16 = int(s/2), int(s/4), int(s/8), int(s/16)
 		
-		reduced_text_embedding = ops.lrelu( ops.linear(t_text_embedding, self.options['t_dim'], 'g_embedding') )
+		reduced_text_embedding = ops.lrelu( ops.linear(t_text_embedding, self.options['t_dim'], 'g1_embedding') )
 		z_concat = concat(1, [t_z, reduced_text_embedding])
-		z_ = ops.linear(z_concat, self.options['gf_dim']*8*s16*s16, 'g_h0_lin')
+		z_ = ops.linear(z_concat, self.options['gf_dim']*8*s16*s16, 'g1_h0_lin')
 		h0 = tf.reshape(z_, [-1, s16, s16, self.options['gf_dim'] * 8])
 		h0 = ops.lrelu(self.g_bn0(h0, train = False))
 		
-		h1 = ops.deconv2d(h0, [self.options['batch_size'], s8, s8, self.options['gf_dim']*4], name='g_h1')
+		h1 = ops.deconv2d(h0, [self.options['batch_size'], s8, s8, self.options['gf_dim']*4], name='g1_h1')
 		h1 = ops.lrelu(self.g_bn1(h1, train = False))
 		
-		h2 = ops.deconv2d(h1, [self.options['batch_size'], s4, s4, self.options['gf_dim']*2], name='g_h2')
+		h2 = ops.deconv2d(h1, [self.options['batch_size'], s4, s4, self.options['gf_dim']*2], name='g1_h2')
 		h2 = ops.lrelu(self.g_bn2(h2, train = False))
 		
-		h3 = ops.deconv2d(h2, [self.options['batch_size'], s2, s2, self.options['gf_dim']*1], name='g_h3')
+		h3 = ops.deconv2d(h2, [self.options['batch_size'], s2, s2, self.options['gf_dim']*1], name='g1_h3')
 		h3 = ops.lrelu(self.g_bn3(h3, train = False))
 		
-		h4 = ops.deconv2d(h3, [self.options['batch_size'], s, s, 3], name='g_h4')
+		h4 = ops.deconv2d(h3, [self.options['batch_size'], s, s, 3], name='g1_h4')
 		
 		return (tf.tanh(h4)/2. + 0.5)
 
 	def g_name(self):
 		self.g_idx += 1
-		return 'g_' + str(self.g_idx)
+		return 'g1_' + str(self.g_idx)
+	def g2_name(self):
+		self.g2_idx += 1
+		return 'g2_' + str(self.g2_idx)
 	def d_name(self):
 		self.d_idx += 1
 		return 'd_generatedname_' + str(self.d_idx)
@@ -311,7 +301,9 @@ class GAN:
 		minibatch_features = tf.reduce_sum(tf.exp(-abs_diffs), 2)
 		return minibatch_features
 	#Residual Block
-	def add_residual(self, prev_layer, z_concat, text_filters = 3, k_h = 5, k_w = 5, hidden_text_filters = 20):
+	def add_residual(self, prev_layer, z_concat, text_filters = 3, k_h = 5, k_w = 5, hidden_text_filters = 20,name_func=None):
+		if name_func is None:
+			name_func = self.g_name
 		
 		s = prev_layer.get_shape()[1].value
 		filters = prev_layer.get_shape()[3].value
@@ -323,23 +315,23 @@ class GAN:
 		
 		if z_concat is not None:
 			text_augment = tf.reshape(ops.lrelu(bn1(
-				ops.linear(z_concat,  s/2* s/2* text_filters,self.g_name()))),[-1, s/2, s/2, text_filters])
+				ops.linear(z_concat,  s/2* s/2* text_filters,name_func()))),[-1, s/2, s/2, text_filters])
 			
 			text_augment = ops.lrelu(bn0(ops.deconv2d(text_augment,
-				[self.options['batch_size'], s, s, hidden_text_filters], name=self.g_name())))
+				[self.options['batch_size'], s, s, hidden_text_filters], name=name_func())))
 		
-			concatenated = concat(3, [text_augment, prev_layer], name=self.g_name())
+			concatenated = concat(3, [text_augment, prev_layer], name=name_func())
 		else:
 			concatenated = prev_layer
 			
 		res_hidden = bn2(ops.noised(ops.deconv2d(concatenated, 
-			[self.options['batch_size'], s, s, filters], k_h=k_h, k_w=k_h, d_h=1, d_w=1, name=self.g_name())))
+			[self.options['batch_size'], s, s, filters], k_h=k_h, k_w=k_h, d_h=1, d_w=1, name=name_func())))
 		
-		residual = ops.deconv2d(ops.lrelu(res_hidden, name = self.g_name()),
-			[self.options['batch_size'], s, s, filters], k_h=k_h, k_w=k_h, d_h=1, d_w=1, name=self.g_name())
+		residual = ops.deconv2d(ops.lrelu(res_hidden, name = name_func()),
+			[self.options['batch_size'], s, s, filters], k_h=k_h, k_w=k_h, d_h=1, d_w=1, name=name_func())
 		
 		next_layer = prev_layer + residual
-		return ops.lrelu(next_layer, name=self.g_name())
+		return ops.lrelu(next_layer, name=name_func())
 	
 	#Residual Block in lower dimension
 	def add_ld_residual(self, prev_layer, z_concat, text_filters = 3, k_h = 5, k_w = 5, hidden_text_filters = 20):
@@ -374,7 +366,7 @@ class GAN:
 	
 	
 	#Residual Block Standard Version. Needed for very small images
-	def add_residual_standard(self, prev_layer, z_concat, text_filters = 2, k_h = 5, k_w = 5):
+	def add_residual_standard(self, prev_layer, z_concat, text_filters = 1, k_h = 5, k_w = 5):
 		
 		s = prev_layer.get_shape()[1].value
 		filters = prev_layer.get_shape()[3].value
@@ -387,8 +379,8 @@ class GAN:
 			concatenated = concat(3, [text_augment, prev_layer], name=self.g_name())
 		else:
 			concatenated = prev_layer
-		res_hidden = bn2(ops.deconv2d(concatenated,
-			[self.options['batch_size'], s, s, filters], k_h=k_h, k_w=k_h, d_h=1, d_w=1, name=self.g_name()))
+		res_hidden = bn2(ops.noised(ops.deconv2d(concatenated,
+			[self.options['batch_size'], s, s, filters], k_h=k_h, k_w=k_h, d_h=1, d_w=1, name=self.g_name())))
 		
 		residual = ops.deconv2d(ops.lrelu(res_hidden, name = self.g_name()),
 			[self.options['batch_size'], s, s, filters], k_h=k_h, k_w=k_h, d_h=1, d_w=1, name=self.g_name())
@@ -422,7 +414,7 @@ class GAN:
 	def generator(self, t_z, t_text_embedding):
 		
 		s = self.options['image_size']
-		s2, s4, s8, s16, s32 = int(s/2), int(s/4), int(s/8), int(s/16), int(s/32)
+		s2, s4, s8, s16 = int(s/2), int(s/4), int(s/8), int(s/16)
 		
 		bn1 = self.g_bn()
 		bn2 = self.g_bn()
@@ -433,116 +425,105 @@ class GAN:
 		bn7 = self.g_bn()
 		bn8 = self.g_bn()
 		bn9 = self.g_bn()
-		reduced_text_embedding = ops.lrelu( ops.noised(ops.linear(t_text_embedding, self.options['t_dim'], 'g_embedding')), name = 'g_pre1')
+		bn10 = self.g_bn()
+		bn11 = self.g_bn()
+		bn12 = self.g_bn()
+		bn13 = self.g_bn()
+		reduced_text_embedding = ops.lrelu( ops.linear(t_text_embedding, self.options['t_dim'], 'g1_embedding'), name = 'g1_pre1')
 		z_concat = concat(1, [t_z, reduced_text_embedding])
-		z_ = ops.linear(z_concat, self.options['gf_dim']*8*s32*s32, 'g_h0_lin')
-		h0 = tf.reshape(z_, [-1, s32, s32, self.options['gf_dim'] * 8])
-		h0 = ops.lrelu(self.g_bn0(h0) , name = 'g_pre2')
-		h0 = ops.deconv2d(h0, [self.options['batch_size'], s32, s32, self.options['gf_dim']*8], d_h=1, d_w=1,name=self.g_name())
-		h0 = ops.lrelu(bn8(h0), name = self.g_name())
+		z_ = ops.linear(z_concat, self.options['gf_dim']*8*s16*s16, 'g1_h0_lin')
+		h0 = tf.reshape(z_, [-1, s16, s16, self.options['gf_dim'] * 8])
+		h0 = ops.lrelu(self.g_bn0(h0) , name = 'g1_pre2')
 		
-		#h0 = self.add_residual_standard(h0, z_concat, k_h = 3, k_w = 3, text_filters=4)
-		h0 = self.add_residual_standard(h0, z_concat)
-		#h1 = tf.image.resize_nearest_neighbor(h0, [s16, s16])
-		h1 = ops.deconv2d(h0, [self.options['batch_size'], s16, s16, self.options['gf_dim']*4],name='g_h1')
-		h1 = ops.lrelu(self.g_bn1(h1), name = 'g_pre43234')
-		h1 = ops.deconv2d(h1, [self.options['batch_size'], s16, s16, self.options['gf_dim']*4], d_h=1, d_w=1,name=self.g_name())
+		h0 = self.add_residual_standard(h0, z_concat, k_h = 3, k_w = 3, text_filters=4)
+		#h0 = self.add_residual_standard(h0, None, k_h = 3, k_w = 3, text_filters=4)
+		#h1 = tf.image.resize_nearest_neighbor(h0, [s8, s8])
+		h1 = ops.deconv2d(h0, [self.options['batch_size'], s8, s8, self.options['gf_dim']*4],name='g1_h1')
+		h1 = ops.lrelu(self.g_bn1(h1), name = 'g1_pre43234')
+		h1 = ops.deconv2d(h1, [self.options['batch_size'], s8, s8, self.options['gf_dim']*4], d_h=1, d_w=1,name=self.g_name())
 		h1 = ops.lrelu(bn1(h1), name = self.g_name())
-		#h1 = ops.deconv2d(h0, [self.options['batch_size'], s16, s16, self.options['gf_dim']*4], name='g_h1')
-		h1 = self.add_residual_standard(h1, z_concat)
-		h1 = self.add_residual_standard(h1, z_concat)
-		#h1 = self.add_residual(h1, z_concat)
-		#h1 = self.add_residual(h1, z_concat)
+		#h1 = ops.deconv2d(h0, [self.options['batch_size'], s8, s8, self.options['gf_dim']*4], name='g1_h1')
+		
+		h1 = self.add_residual(h1, z_concat)
 		#h1 = self.add_residual(h1, None)
 		
-		#h2 = tf.image.resize_nearest_neighbor(h1, [s8, s8])
-		h2 = ops.deconv2d(h1, [self.options['batch_size'], s8, s8, self.options['gf_dim']*2],name='g_h2')
-		h2 = ops.lrelu(self.g_bn2(h2), name = 'g_pre432')
-		h2 = ops.deconv2d(h2, [self.options['batch_size'], s8, s8, self.options['gf_dim']*2], d_h=1, d_w=1,name=self.g_name())
+		#h2 = tf.image.resize_nearest_neighbor(h1, [s4, s4])
+		h2 = ops.deconv2d(h1, [self.options['batch_size'], s4, s4, self.options['gf_dim']*2],name='g1_h2')
+		h2 = ops.lrelu(self.g_bn2(h2), name = 'g1_pre432')
+		h2 = ops.deconv2d(h2, [self.options['batch_size'], s4, s4, self.options['gf_dim']*2], d_h=1, d_w=1,name=self.g_name())
 		h2 = ops.lrelu(bn2(h2), name = self.g_name())
 		
-		h2 = self.add_residual_standard(h2, z_concat)
-		h2 = self.add_residual_standard(h2, z_concat)
-		
-		#h2 = self.add_residual(h2, z_concat)
-		#h2 = self.add_residual(h2, z_concat)
+		h2 = self.add_residual(h2, z_concat)
 		#h2 = self.add_residual(h2, None)
 
-		#h3 = tf.image.resize_nearest_neighbor(h2, [s4, s4])
-		h3 = ops.deconv2d(h2, [self.options['batch_size'], s4, s4, self.options['gf_dim']*1],name='g_h3')
-		h3 = ops.lrelu(self.g_bn3(h3), name = 'g_pre4534')
-		h3 = ops.deconv2d(h3, [self.options['batch_size'], s4, s4, self.options['gf_dim']*1], d_h=1, d_w=1,name=self.g_name())
+		#h3 = tf.image.resize_nearest_neighbor(h2, [s2, s2])
+		h3 = ops.deconv2d(h2, [self.options['batch_size'], s2, s2, self.options['gf_dim']*1],name='g1_h3')
+		h3 = ops.lrelu(self.g_bn3(h3), name = 'g1_pre4534')
+		h3 = ops.deconv2d(h3, [self.options['batch_size'], s2, s2, self.options['gf_dim']*1], d_h=1, d_w=1,name=self.g_name())
 		h3 = ops.lrelu(bn3(h3), name = self.g_name())
+		#h3 = ops.deconv2d(h2, [self.options['batch_size'], s2, s2, self.options['gf_dim']*2], name='g1_h3')
 		
-		h3 = self.add_residual_standard(h3, z_concat)
-		h3 = self.add_residual_standard(h3, z_concat)
-		#h3 = ops.deconv2d(h2, [self.options['batch_size'], s4, s4, self.options['gf_dim']*2], name='g_h3')
-		
-		#h3 = self.add_residual(h3, z_concat)
-		#h3 = self.add_residual(h3, z_concat)
+		h3 = self.add_residual(h3, z_concat)
+		h3 = self.add_residual(h3, z_concat)
 		#h3 = self.add_residual(h3, None)
-		
-		h3 = ops.deconv2d(h3, [self.options['batch_size'], s2, s2, self.options['gf_dim']*1], name=self.g_name())
-		h3 = ops.lrelu(bn6(h3), name = self.g_name())
-		
-		h3 = self.add_residual_standard(h3, z_concat)
-		h3 = self.add_residual_standard(h3, z_concat)
-		
-		#h3 = self.add_residual(h3, z_concat)
-		#h3 = self.add_residual(h3, z_concat)
-		
-		h3 = ops.deconv2d(h3, [self.options['batch_size'], s2, s2, self.options['gf_dim']*1], d_h=1, d_w=1, name=self.g_name())
-		h3 = ops.lrelu(bn7(h3), name = self.g_name())
-		
-		h3 = self.add_residual_standard(h3, z_concat)
-		h3 = self.add_residual_standard(h3, z_concat)
-		h3 = self.add_residual_standard(h3, None)
-		h3 = self.add_residual_standard(h3, None)
-		
-		#h3 = self.add_residual(h3, z_concat)
-		#h3 = self.add_residual(h3, z_concat)
 
 		#maybe project straight to 3d.
 		#h4 = tf.image.resize_nearest_neighbor(h3, [s, s])
-		#h4 = ops.deconv2d(h3, [self.options['batch_size'], s, s, self.options['gf_dim']*1], name='g_h4')
-		#h4 = ops.lrelu(self.g_bn4(h4), name = 'g_pre10')
+		#h4 = ops.deconv2d(h3, [self.options['batch_size'], s, s, self.options['gf_dim']*1], name='g1_h4')
+		#h4 = ops.lrelu(self.g_bn4(h4), name = 'g1_pre10')
 		#h4 = self.add_ld_residual(h4, z_concat)
 		#h4 = self.add_ld_residual(h4, None)
 		
-		h4 = ops.deconv2d(h3,[self.options['batch_size'], s, s, 3], name='g_h6_out')
+		h4 = ops.deconv2d(h3,[self.options['batch_size'], s, s, 3], name='g1_h6_out')
 		h4 = ops.lrelu(self.g_bn4(h4), name = self.g_name())
-		
-
-		#h4 = ops.deconv2d(h4,[self.options['batch_size'], s, s, 3], d_h=1, d_w=1, name='g_h7_out')
+		#h4 = ops.deconv2d(h4,[self.options['batch_size'], s, s, 3], d_h=1, d_w=1, name='g1_h7_out')
 		#h4 = ops.lrelu(bn4(h4), name = self.g_name())
 		#h4 = self.add_ld_residual(h4, z_concat, hidden_text_filters=2)
+		#h4 = self.add_residual(h4, None)
 		#h4 = self.add_residual(h4, None)
 		
 		h4 = ops.deconv2d(h4, [self.options['batch_size'], s, s, 3], d_h=1, d_w=1,name=self.g_name())
-		#h4 = ops.lrelu(bn4(h4), name = self.g_name())
-		#h4 = self.add_ld_residual(h4, z_concat, hidden_text_filters=2)
-		#h4 = self.add_ld_residual(h4, None)
-		#h4 = self.add_residual(h4, z_concat, hidden_text_filters=1)
-		#h4 = self.add_residual(h4, None)
-		'''
-		small_gen_hidden = ops.lrelu(self.g_bn_small(ops.noised(ops.deconv2d(
-			h1, [self.options['batch_size'], s8, s8, 100], name='g_small_gen_hidden'))), name = 'g_pre13')
-		mid_gen_hidden = ops.lrelu(self.g_bn_mid(ops.noised(ops.deconv2d(
-			h2, [self.options['batch_size'], s4, s4, 100], name='g_midgen_hidden'))), name = 'g_pre14')
 		
-		#small_gen_hidden = self.add_residual(small_gen_hidden, z_concat)
-		#mid_gen_hidden = self.add_residual(mid_gen_hidden, z_concat)
 		
-		small_generated = ops.deconv2d(small_gen_hidden, [self.options['batch_size'], s8, s8, 3], d_h=1, d_w=1, name='g_small_generated')
-		mid_generated = ops.deconv2d(mid_gen_hidden, [self.options['batch_size'], s4, s4, 3], d_h=1, d_w=1, name='g_midgenerated')
-		'''
-		#small_generated = self.add_residual(small_generated, None)
-		#mid_generated = self.add_residual(mid_generated, None)
+		h5 = self.add_residual(h3, z_concat,name_func=self.g2_name)
+		h5 = self.add_residual(h5, z_concat,name_func=self.g2_name)
+		h5 = ops.deconv2d(h5, [self.options['batch_size'], s2, s2, self.options['gf_dim']*1], d_h=1, d_w=1,name=self.g2_name())
+		h5 = ops.lrelu(bn10(h5))
+		#h5 = ops.deconv2d(h5, [self.options['batch_size'], s2, s2, self.options['gf_dim']*1], d_h=1, d_w=1,name=self.g2_name())
+		#h5 = ops.lrelu(bn11(h5))
+		#h5 = ops.deconv2d(h5, [self.options['batch_size'], s2, s2, self.options['gf_dim']*1], d_h=1, d_w=1,name=self.g2_name())
+		#h5 = ops.lrelu(bn12(h5))
+		h5 = self.add_residual(h5, z_concat,name_func=self.g2_name)
+		#h5 = self.add_residual(h5, z_concat,name_func=self.g2_name)
 		
-		return (tf.tanh(h4)/2. + 0.5)#, (tf.tanh(small_generated)/2. + 0.5), (tf.tanh(mid_generated)/2. + 0.5)
+		
+		h5 = ops.deconv2d(h5, [self.options['batch_size'], s2, s2, self.options['gf_dim']*1], d_h=1, d_w=1,name=self.g2_name())
+		h5 = ops.lrelu(bn7(h5))
+		h5 = ops.deconv2d(h5, [self.options['batch_size'], s2, s2, self.options['gf_dim']*1], d_h=1, d_w=1,name=self.g2_name())
+		h5 = ops.lrelu(bn13(h5))
+		#h5 = self.add_residual(h5, z_concat,name_func=self.g2_name)
+		#h5 = self.add_residual(h5, z_concat,name_func=self.g2_name)
+		#h5 = self.add_residual(h5, z_concat,name_func=self.g2_name)
+		#h5 = self.add_residual(h5, z_concat,name_func=self.g2_name)
+		#h5 = self.add_residual(h5, z_concat,name_func=self.g2_name)
+		
+		#h5 = self.add_residual(h5, z_concat,name_func=self.g2_name)
+		#h5 = self.add_residual(h5, z_concat,name_func=self.g2_name)
+		
+		h5 = ops.deconv2d(h5, [self.options['batch_size'], s2, s2, self.options['gf_dim']*1], d_h=1, d_w=1,name=self.g2_name())
+		h5 = ops.lrelu(bn8(h5))
+		
+		#h5 = self.add_residual(h5, z_concat,name_func=self.g2_name)
+		
+		stack2 = ops.deconv2d(h5, [self.options['batch_size'], s, s, 3],name=self.g2_name())
+		#h5 = ops.lrelu(bn9(h5), name = self.g2_name())
+		#h5 = ops.deconv2d(h5, [self.options['batch_size'], s, s, 3], d_h=1, d_w=1,name=self.g2_name())
+		
+		
+		return (tf.tanh(h4)/2. + 0.5), (tf.tanh(stack2)/2. + 0.5)#, (tf.tanh(small_generated)/2. + 0.5), (tf.tanh(mid_generated)/2. + 0.5)
 
 	# DISCRIMINATOR IMPLEMENTATION based on : https://github.com/carpedm20/DCGAN-tensorflow/blob/master/model.py
-	def discriminator(self, image, t_text_embedding, reuse=False):
+	def discriminator1(self, image, t_text_embedding, reuse=False):
 		if reuse:
 			if not prince:
 				tf.get_variable_scope().reuse_variables()
@@ -562,12 +543,41 @@ class GAN:
 							 'd_embedding'), name = 'd_pre5')
 		reduced_text_embeddings = tf.expand_dims(reduced_text_embeddings,1)
 		reduced_text_embeddings = tf.expand_dims(reduced_text_embeddings,2)
-		tiled_embeddings = tf.tile(reduced_text_embeddings, [1,8,8,1], name='tiled_embeddings')
+		tiled_embeddings = tf.tile(reduced_text_embeddings, [1,4,4,1], name='tiled_embeddings')
 		
 		h3_concat = concat( 3, [h3, tiled_embeddings], name='h3_concat')
 		h3_new = ops.lrelu(ops.conv2d(h3_concat, self.options['df_dim']*8, 1,1,1,1, name = 'd_h3_conv_new'), name = 'd_pre6') #4
 		
 		h4 = ops.linear(tf.reshape(h3_new, [self.options['batch_size'], -1]), 1, 'd_h3_lin')
+		
+		return tf.nn.sigmoid(h4), h4
+	
+	def discriminator2(self, image, t_text_embedding, reuse=False):
+		if reuse:
+			if not prince:
+				tf.get_variable_scope().reuse_variables()
+		elif prince:
+			tf.get_variable_scope()._reuse = None
+		s = image.get_shape()[1].value
+		mini_information = self.minibatch_discriminate_full(tf.reshape(
+			image, [self.options['batch_size'], -1]), num_kernels=10, kernel_dim=10, reuse = reuse)*10
+		t_text_embedding = concat(1, [t_text_embedding, mini_information])
+		h0 = ops.lrelu(ops.conv2d(ops.noised(image, .5), self.options['df_dim'], name = 'd_h02_conv'), name = 'd_pre12') #32
+		h1 = ops.lrelu(self.bn1f(ops.noised(ops.conv2d(h0, self.options['df_dim']*2, name = 'd_h12_conv'))), name = 'd_pre22') #16
+		h2 = ops.lrelu(self.bn2f(ops.noised(ops.conv2d(h1, self.options['df_dim']*4, name = 'd_h22_conv'))), name = 'd_pre32') #8
+		h3 = ops.lrelu(self.bn3f(ops.noised(ops.conv2d(h2, self.options['df_dim']*8, name = 'd_h32_conv'))), name = 'd_pre42') #4
+		
+		# ADD TEXT EMBEDDING TO THE NETWORK
+		reduced_text_embeddings = ops.lrelu(ops.linear(t_text_embedding, self.options['t_dim'],#self.options['t_dim']/64
+							 'd_embedding'), name = 'd_pre52')
+		reduced_text_embeddings = tf.expand_dims(reduced_text_embeddings,1)
+		reduced_text_embeddings = tf.expand_dims(reduced_text_embeddings,2)
+		tiled_embeddings = tf.tile(reduced_text_embeddings, [1,4,4,1], name='tiled_embeddings')
+		
+		h3_concat = concat( 3, [h3, tiled_embeddings], name='h3_concat2')
+		h3_new = ops.lrelu(ops.conv2d(h3_concat, self.options['df_dim']*8, 1,1,1,1, name = 'd_h3_conv_new'), name = 'd_pre62') #4
+		
+		h4 = ops.linear(tf.reshape(h3_new, [self.options['batch_size'], -1]), 1, 'd_h3_lin2')
 		
 		return tf.nn.sigmoid(h4), h4
 	

@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 #SBATCH --job-name=myAmberJobGPU
+#SBATCH --output=jobcpu.out
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=48:00:00
@@ -16,6 +17,6 @@ module load scikit-learn/intel/0.18.1
 
 
 
-python -u train.py --data_set="flowers" --resume_model="Data/Models/latest_model_flowers_temp.ckpt"
+python -u train.py --data_set="flowers" #--resume_model="Data/Models/latest_model_flowers_temp.ckpt"
 
 

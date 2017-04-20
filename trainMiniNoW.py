@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-import modelMiniBatchDisc
+import modelMiniNoW
 import argparse
 import pickle
 from os.path import join
@@ -22,7 +22,7 @@ def main():
 	parser.add_argument('--z_dim', type=int, default=100,
 					   help='Noise dimension')
 
-	parser.add_argument('--t_dim', type=int, default= 1024,#default=256,
+	parser.add_argument('--t_dim', type=int, default= 256,#1024#LEE,#default=256,
 					   help='Text feature dimension')
 
 	parser.add_argument('--batch_size', type=int, default=64,#LEECHANGE default=64,
@@ -31,7 +31,7 @@ def main():
 	parser.add_argument('--image_size', type=int, default=64,
 					   help='Image Size a, a x a')
 
-	parser.add_argument('--gf_dim', type=int, default=4,
+	parser.add_argument('--gf_dim', type=int, default=128,
 					   help='Number of conv in the first layer gen.')
 
 	parser.add_argument('--df_dim', type=int, default=64,
@@ -40,13 +40,13 @@ def main():
 	parser.add_argument('--gfc_dim', type=int, default=1024,
 					   help='Dimension of gen untis for for fully connected layer 1024')
 
-	parser.add_argument('--caption_vector_length', type=int, default=4800,
+	parser.add_argument('--caption_vector_length', type=int, default=2400,#2400Lee
 					   help='Caption Vector Length')
 
 	parser.add_argument('--data_dir', type=str, default="Data",
 					   help='Data Directory')
 
-	parser.add_argument('--learning_rate', type=float,default=1e-3,#LEECHANGE default=0.0002,
+	parser.add_argument('--learning_rate', type=float,default=.0001,#1e-4 or 1e-5LEECHANGE default=0.0002,
 					   help='Learning Rate')
 
 	parser.add_argument('--beta1', type=float, default =.5,#LEECHANGE default=0.5,
@@ -77,63 +77,67 @@ def main():
 	}
 	
 	
-	gan = modelMiniBatchDisc.GAN(model_options)
+	gan = modelMiniNoW.GAN(model_options)
 	input_tensors, variables, loss, outputs, checks = gan.build_model()
 	
-	#d_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1, beta2 = .9).minimize(loss['d_loss'], var_list=variables['d_vars'])
-	#g_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1, beta2 = .9).minimize(loss['g_loss'], var_list=variables['g_vars'])
-	
+	#d_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1).minimize(loss['d_loss'], var_list=variables['d_vars'])
+	#g_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1).minimize(loss['g_loss'], var_list=variables['g_vars'])
+	'''
 	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
 	gvs = optimizer.compute_gradients(loss['d_loss'], var_list=variables['d_vars'])
 	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
 	d_optim = optimizer.apply_gradients(capped_gvs)
-	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1, beta2 = .9)
+	'''
+	d_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1).minimize(loss['d_loss'], var_list=variables['d_vars'])
+	'''
+	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
 	gvs = optimizer.compute_gradients(loss['d_loss_full'], var_list=variables['d_vars'])
 	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
 	d_optim_full = optimizer.apply_gradients(capped_gvs)
 	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1, beta2 = .9)
+	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
 	gvs = optimizer.compute_gradients(loss['d_loss_mid'], var_list=variables['d_vars'])
 	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
 	d_optim_mid = optimizer.apply_gradients(capped_gvs)
 	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1, beta2 = .9)
+	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
 	gvs = optimizer.compute_gradients(loss['d_loss_small'], var_list=variables['d_vars'])
 	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
 	d_optim_small = optimizer.apply_gradients(capped_gvs)
 	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1, beta2 = .9)
+	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
 	gvs = optimizer.compute_gradients(loss['d_loss_small_full'], var_list=variables['d_vars'])
 	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
 	d_optim_small_full = optimizer.apply_gradients(capped_gvs)
 	
 	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1, beta2 = .9)
+	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
 	gvs = optimizer.compute_gradients(loss['g_loss'], var_list=variables['g_vars'])
 	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
 	g_optim = optimizer.apply_gradients(capped_gvs)
-	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1, beta2 = .9)
+	'''
+	g_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1).minimize(loss['g_loss'], var_list=variables['g_vars'])
+	'''
+	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
 	gvs = optimizer.compute_gradients(loss['g_loss_full'], var_list=variables['g_vars'])
 	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
 	g_optim_full = optimizer.apply_gradients(capped_gvs)
 	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1, beta2 = .9)
+	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
 	gvs = optimizer.compute_gradients(loss['g_loss_mid'], var_list=variables['g_vars'])
 	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
 	g_optim_mid = optimizer.apply_gradients(capped_gvs)
 	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1, beta2 = .9)
+	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
 	gvs = optimizer.compute_gradients(loss['g_loss_small'], var_list=variables['g_vars'])
 	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
 	g_optim_small = optimizer.apply_gradients(capped_gvs)
 	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1, beta2 = .9)
+	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1)
 	gvs = optimizer.compute_gradients(loss['g_loss_small_mid'], var_list=variables['g_vars'])
 	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
 	g_optim_small_mid = optimizer.apply_gradients(capped_gvs)
-	
+	'''
 	
 	sess = tf.InteractiveSession()
 	if prince:
@@ -160,56 +164,62 @@ def main():
 			# DISCR UPDATE
 			check_ts = [ checks['d_loss_full'] , checks['d_loss_mid'], checks['d_loss_small'],
 					 checks['g_loss_full'] , checks['g_loss_mid'], checks['g_loss_small']]
-			if disc_break > 0:
-				disc_break -= 1
-				sess.run([g_optim],
-					feed_dict = {
-						input_tensors['t_real_image'] : real_images,
-						input_tensors['t_real_caption'] : caption_vectors,
-						input_tensors['t_z'] : z_noise,
-						input_tensors['l2reg']: 0
-					})
-			else:
-				_, _, d_loss, gen, gen_small,gen_mid,real_small, real_mid, g_loss, df, dm, ds, gf, gm, gs = sess.run(
-					[g_optim, d_optim, loss['d_loss'], outputs['generator'], outputs['generator_small_image'], outputs['generator_mid_image'], 
-					outputs['real_small_image'],outputs['real_mid_image'],  loss['g_loss']] + check_ts,
-					feed_dict = {
-						input_tensors['t_real_image'] : real_images,
-						input_tensors['t_wrong_image'] : wrong_images,
-						input_tensors['t_real_caption'] : caption_vectors,
-						input_tensors['t_z'] : z_noise,
-						input_tensors['l2reg']: 0
-					})
-				Generator_Boost = Disc_Handicap = 1.
-				df /= Disc_Handicap
-				dm /= Disc_Handicap
-				ds /= Disc_Handicap
-				gf *= Generator_Boost
-				gm *= Generator_Boost
-				gs *= Generator_Boost
-				sess.run(gan.wgan_clip_1eneg3)
-				d_avg_full = d_avg_full *.8 + .2*(df -gf)
-				d_avg_mid = d_avg_mid *.8 + .2*(dm - gm)
-				d_avg_sml = d_avg_sml *.8 + .2*(ds - gs)
+			sess.run([g_optim],
+				feed_dict = {
+					input_tensors['t_real_image'] : real_images,
+					input_tensors['t_real_caption'] : caption_vectors,
+					input_tensors['t_z'] : z_noise,
+					input_tensors['l2reg']: 0
+				})
+			sess.run([g_optim],
+				feed_dict = {
+					input_tensors['t_real_image'] : real_images,
+					input_tensors['t_real_caption'] : caption_vectors,
+					input_tensors['t_z'] : z_noise,
+					input_tensors['l2reg']: 0
+				})
+			_, _, d_loss, gen, gen_small,gen_mid,real_small, real_mid, g_loss, df, dm, ds, gf, gm, gs = sess.run(
+				[g_optim, d_optim, loss['d_loss'], outputs['generator'], outputs['generator_small_image'], outputs['generator_mid_image'], 
+				outputs['real_small_image'],outputs['real_mid_image'],  loss['g_loss']] + check_ts,
+				feed_dict = {
+					input_tensors['t_real_image'] : real_images,
+					input_tensors['t_wrong_image'] : wrong_images,
+					input_tensors['t_real_caption'] : caption_vectors,
+					input_tensors['t_z'] : z_noise,
+					input_tensors['l2reg']: 0
+				})
+			'''
+			Generator_Boost = Disc_Handicap = 2.
+			df /= Disc_Handicap
+			dm /= Disc_Handicap
+			ds /= Disc_Handicap
+			gf *= Generator_Boost
+			gm *= Generator_Boost
+			gs *= Generator_Boost
+			#sess.run(gan.wgan_clip_1eneg3)
+			'''
+			d_avg_full = d_avg_full *.8 + .2*(df -gf)
+			d_avg_mid = d_avg_mid *.8 + .2*(dm - gm)
+			d_avg_sml = d_avg_sml *.8 + .2*(ds - gs)
+			'''
+			if d_avg_full + d_avg_mid + d_avg_sml < 0:
+				disc_break = np.abs(int(d_avg_full + d_avg_mid + d_avg_sml))*3 + 1
+			'''
+			if batch_no % 2 == 0:
 				
-				if d_avg_full + d_avg_mid + d_avg_sml < 0:
-					disc_break = np.abs(int(d_avg_full + d_avg_mid + d_avg_sml))*3 + 1
+				idx = np.random.randint(1,10)
+				img_full = gen[idx,:,:,:]
+				img_small = gen_small[idx,:,:,:]
+				r_small = real_small[idx,:,:,:]
+				img_mid = gen_mid[idx,:,:,:]
+				r_mid = real_mid[idx,:,:,:]
+				scipy.misc.imsave('images_mini_no_w1/' + str(i) + '_img_idx:' + str(batch_no) + 'full.jpg',img_full)
+				scipy.misc.imsave('images_mini_no_w1/' + str(i) + '_img_idx:' + str(batch_no) + 'tiny.jpg',img_small)
+				scipy.misc.imsave('images_mini_no_w1/' + str(i) + '_img_idx:' + str(batch_no) + 'mid.jpg',img_mid)
+				scipy.misc.imsave('images_mini_no_w1/' + str(i) + '_img_idx:' + str(batch_no) + 'a_r_small.jpg',r_small)
+				scipy.misc.imsave('images_mini_no_w1/' + str(i) + '_img_idx:' + str(batch_no) + 'a_r_mid.jpg',r_mid)
 				
-				if 1:#batch_no % 10 == 0:
-					
-					idx = np.random.randint(1,10)
-					img_full = gen[idx,:,:,:]
-					img_small = gen_small[idx,:,:,:]
-					r_small = real_small[idx,:,:,:]
-					img_mid = gen_mid[idx,:,:,:]
-					r_mid = real_mid[idx,:,:,:]
-					scipy.misc.imsave('images_mini2/' + str(i) + '_img_idx:' + str(batch_no) + 'full.jpg',img_full)
-					scipy.misc.imsave('images_mini2/' + str(i) + '_img_idx:' + str(batch_no) + 'tiny.jpg',img_small)
-					scipy.misc.imsave('images_mini2/' + str(i) + '_img_idx:' + str(batch_no) + 'mid.jpg',img_mid)
-					scipy.misc.imsave('images_mini2/' + str(i) + '_img_idx:' + str(batch_no) + 'a_r_small.jpg',r_small)
-					scipy.misc.imsave('images_mini2/' + str(i) + '_img_idx:' + str(batch_no) + 'a_r_mid.jpg',r_mid)
-					
-					img_idx += 1
+				img_idx += 1
 
 			print 'd_loss_full', df
 			print 'd_loss_mid', dm
@@ -230,7 +240,7 @@ def main():
 				print "Saving Images, Model"
 				#Lee commented the following line out because it crashed. No idea what it was trying to do.
 				#save_for_vis(args.data_dir, real_images, gen, image_files)
-				save_path = saver.save(sess, "Data/Models/latest_model_mini1_{}_temp.ckpt".format(args.data_set))
+				save_path = saver.save(sess, "Data/Models/latest_model_mini_no_w1_{}_temp.ckpt".format(args.data_set))
 		if i%5 == 0:
 			save_path = saver.save(sess, "Data/Models/mini_after_{}_epoch_{}.ckpt".format(args.data_set, i))
 

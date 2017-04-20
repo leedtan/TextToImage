@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
-import baseline_model
+import modelSemi
+import modelSemiOneDisc
 import argparse
 import pickle
 from os.path import join
@@ -9,6 +10,7 @@ from Utils import image_processing
 import scipy.misc
 import random
 import json
+import time
 import os
 import shutil
 import matplotlib
@@ -16,37 +18,37 @@ import matplotlib.pyplot as plt
 plt.ioff()
 
 prince = True
-
+#TO try: just reduced caption vector length, also remove gradient clipping. and increase learning rate *2.
 def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--z_dim', type=int, default=10,
 					   help='Noise dimension')
 
-	parser.add_argument('--t_dim', type=int, default= 100,#default=256,
+	parser.add_argument('--t_dim', type=int, default= 10,#1024#LEE,#default=256,
 					   help='Text feature dimension')
 
-	parser.add_argument('--batch_size', type=int, default=64,#LEECHANGE default=64,
+	parser.add_argument('--batch_size', type=int, default=8,#LEECHANGE default=64,
 					   help='Batch Size')
 
 	parser.add_argument('--image_size', type=int, default=64,
 					   help='Image Size a, a x a')
 
-	parser.add_argument('--gf_dim', type=int, default=10,
+	parser.add_argument('--gf_dim', type=int, default=8,#64,
 					   help='Number of conv in the first layer gen.')
 
-	parser.add_argument('--df_dim', type=int, default=4,#64 for real model
+	parser.add_argument('--df_dim', type=int, default=8,#128,
 					   help='Number of conv in the first layer discr.')
 
 	parser.add_argument('--gfc_dim', type=int, default=1024,
 					   help='Dimension of gen untis for for fully connected layer 1024')
 
-	parser.add_argument('--caption_vector_length', type=int, default=100,
+	parser.add_argument('--caption_vector_length', type=int, default=100,#4096 - zdim (30)#2400Lee
 					   help='Caption Vector Length')
 
 	parser.add_argument('--data_dir', type=str, default="Data",
 					   help='Data Directory')
 
-	parser.add_argument('--learning_rate', type=float,default=1e-4,#LEECHANGE default=0.0002,
+	parser.add_argument('--learning_rate', type=float,default=1e-4,#1e-4 or 1e-5LEECHANGE default=0.0002,
 					   help='Learning Rate')
 
 	parser.add_argument('--beta1', type=float, default =.5,#LEECHANGE default=0.5,
@@ -55,7 +57,7 @@ def main():
 	parser.add_argument('--epochs', type=int, default=6000,
 					   help='Max number of epochs')
 
-	parser.add_argument('--save_every', type=int, default=30,
+	parser.add_argument('--save_every', type=int, default=2,
 					   help='Save Model/Samples every x iterations over batches')
 
 	parser.add_argument('--resume_model', type=str, default=None,
@@ -63,6 +65,9 @@ def main():
 
 	parser.add_argument('--data_set', type=str, default="flowers",
                        help='Dat set: MS-COCO, flowers')
+	
+	parser.add_argument('--save_epoch', type=list, default=[10,20,60,100,300,600,1000,1500,2000,3000],
+						help='Save model in specified epoch')
 
 	args = parser.parse_args()
 	model_options = {
@@ -75,24 +80,14 @@ def main():
 		'gfc_dim' : args.gfc_dim,
 		'caption_vector_length' : args.caption_vector_length
 	}
+	beta2 = .9
 	
+	gan = modelSemiOneDisc.GAN(model_options)
+	input_tensors, variables, loss, outputs, checks = gan.build_model(args.beta1, beta2, args.learning_rate)
 	
-	gan = baseline_model.GAN(model_options)
-	input_tensors, variables, loss, outputs, checks = gan.build_model()
+	g_optim = gan.g_optim
+	d_optim = gan.d_optim
 	
-	#d_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1, beta2 = .9).minimize(loss['d_loss'], var_list=variables['d_vars'])
-	#g_optim = tf.train.AdamOptimizer(args.learning_rate, beta1 = args.beta1, beta2 = .9).minimize(loss['g_loss'], var_list=variables['g_vars'])
-	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
-	gvs = optimizer.compute_gradients(loss['d_loss'], var_list=variables['d_vars'])
-	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-	d_optim = optimizer.apply_gradients(capped_gvs)
-	
-	optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate, beta1 = args.beta1, beta2 = .9)
-	gvs = optimizer.compute_gradients(loss['g_loss'], var_list=variables['g_vars'])
-	capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-	g_optim = optimizer.apply_gradients(capped_gvs)
-	cntr = 0
 	sess = tf.InteractiveSession()
 	if prince:
 		sess.run(tf.global_variables_initializer())
@@ -104,59 +99,134 @@ def main():
 		saver.restore(sess, args.resume_model)
 	
 	loaded_data = load_training_data(args.data_dir, args.data_set)
+	init = 0
+	d_avg_full, d_avg_mid, d_avg_sml = 0,0,0
+	lb = 0#-.3
+	disc_break = -.3
+	t1 = 0
+	t2 = 0
+	d_loss_noise = g_loss_noise = 0
 	for i in range(args.epochs):
+		t = time.time()
 		img_idx = 0
 		batch_no = 0
+		caption_vectors = 0
 		while batch_no*args.batch_size < loaded_data['data_length']:
+			if init == 0:
+				last_captions = np.random.rand(args.batch_size, args.caption_vector_length)/100
+			else:
+				last_captions = caption_vectors
 			real_images, wrong_images, caption_vectors, z_noise, image_files = get_training_batch(batch_no, args.batch_size, 
 				args.image_size, args.z_dim, args.caption_vector_length, 'train', args.data_dir, args.data_set, loaded_data)
-			sess.run(
-				[g_optim],
+			t1 += time.time()-t
+			t = time.time()
+			# DISCR UPDATE
+			lambdaDAE = 1e2
+			sess.run([g_optim],
 				feed_dict = {
-					input_tensors['t_wrong_image'] : wrong_images,
 					input_tensors['t_real_caption'] : caption_vectors,
 					input_tensors['t_z'] : z_noise,
+					input_tensors['l2reg']: 0,
+					input_tensors['LambdaDAE']: lambdaDAE,
+					input_tensors['noise_indicator'] : 0
 				})
-			if cntr == 0:
-				cntr = 2
-				_, _, fake_img, d_loss, g_loss= sess.run(
-					[g_optim, d_optim, outputs['generator'], loss['d_loss'], loss['g_loss']],
+			sess.run([g_optim],
+				feed_dict = {
+					input_tensors['t_real_caption'] : np.random.rand(args.batch_size, args.caption_vector_length)*.02,
+					input_tensors['t_z'] : z_noise,
+					input_tensors['l2reg']: 0,
+					input_tensors['LambdaDAE']: lambdaDAE,
+					input_tensors['noise_indicator'] : 1
+				})
+			
+			
+			if np.random.rand() > 0.8 or init == 0:
+				init = 1
+				last_img = 'real'
+				_, _, d_loss, g_loss, g1_loss, g2_loss, g3_loss, g4_loss, g5_loss, \
+					d1_loss, d2_loss, d3_loss, d4_loss, d5_loss, img1, img2,img3,img4,img5   = sess.run(
+					[g_optim, d_optim, loss['d_loss'], loss['g_loss'], loss['g1_loss'], loss['g2_loss'], loss['g3_loss'], loss['g4_loss'], loss['g5_loss'],
+					 loss['d1_loss'], loss['d2_loss'], loss['d3_loss'], loss['d4_loss'], loss['d5_loss'],
+					outputs['img1'],outputs['img2'], outputs['img3'],outputs['img4'], outputs['img5']],
 					feed_dict = {
 						input_tensors['t_real_image'] : real_images,
 						input_tensors['t_wrong_image'] : wrong_images,
 						input_tensors['t_real_caption'] : caption_vectors,
 						input_tensors['t_z'] : z_noise,
+						input_tensors['l2reg']: 0,
+						input_tensors['LambdaDAE']: lambdaDAE,
+						input_tensors['noise_indicator'] : 0
 					})
-			cntr -= 1
-			sess.run(
-				[g_optim],
-				feed_dict = {
-					input_tensors['t_wrong_image'] : wrong_images,
-					input_tensors['t_real_caption'] : caption_vectors,
-					input_tensors['t_z'] : z_noise,
-				})
-			if batch_no % 10 == 0:
-				
-				idx = np.random.randint(1,30)
-				img_full = fake_img[idx,:,:,:]
-				
-				scipy.misc.imsave('baseline_images2/' + str(i) + '_img_idx:' + str(batch_no) + 'full.jpg',img_full)
+				sess.run([g_optim],
+					feed_dict = {
+						input_tensors['t_real_caption'] : np.random.rand(args.batch_size, args.caption_vector_length)*.02,
+						input_tensors['t_z'] : z_noise,
+						input_tensors['l2reg']: 0,
+						input_tensors['LambdaDAE']: lambdaDAE,
+						input_tensors['noise_indicator'] : 1
+					})
+			elif np.random.rand() > 0.8:
+				last_img = 'noise'
+				_, _, d_loss_noise, g_loss_noise, img1, img2,img3,img4,img5   = sess.run(
+					[g_optim, d_optim, loss['d_loss'], loss['g_loss'],
+					outputs['img1'],outputs['img2'], outputs['img3'],outputs['img4'], outputs['img5']],
+					feed_dict = {
+						input_tensors['t_real_image'] : real_images,
+						input_tensors['t_wrong_image'] : wrong_images,
+						input_tensors['t_real_caption'] : np.random.rand(args.batch_size, args.caption_vector_length)*.02,
+						input_tensors['t_z'] : z_noise,
+						input_tensors['l2reg']: 0,
+						input_tensors['LambdaDAE']: lambdaDAE,
+						input_tensors['noise_indicator'] : 1
+					})
+				sess.run([g_optim],
+					feed_dict = {
+						input_tensors['t_real_caption'] : caption_vectors,
+						input_tensors['t_z'] : z_noise,
+						input_tensors['l2reg']: 0,
+						input_tensors['LambdaDAE']: lambdaDAE,
+						input_tensors['noise_indicator'] : 0
+					})
+			t2 += time.time()-t
+			t = time.time()
+			if batch_no % 30 == 0:
+					
+				idx = np.random.randint(1,3)
+				image1 = img1[idx,:,:,:]
+				image2 = img2[idx,:,:,:]
+				image3 = img3[idx,:,:,:]
+				image4 = img4[idx,:,:,:]
+				image5 = img5[idx,:,:,:]
+				real_full = real_images[idx,:,:,:]
+				folder = 'images_Semi6/'
+				scipy.misc.imsave(folder + str(i) + '_img_idx:' + str(batch_no) + 'stage1' + last_img + '.jpg',image1)
+				scipy.misc.imsave(folder + str(i) + '_img_idx:' + str(batch_no) + 'stage2' + last_img + '.jpg',image2)
+				scipy.misc.imsave(folder + str(i) + '_img_idx:' + str(batch_no) + 'stage3' + last_img + '.jpg',image3)
+				scipy.misc.imsave(folder + str(i) + '_img_idx:' + str(batch_no) + 'stage4' + last_img + '.jpg',image4)
+				scipy.misc.imsave(folder + str(i) + '_img_idx:' + str(batch_no) + 'stage5' + last_img + '.jpg',image5)
+				scipy.misc.imsave(folder + str(i) + '_img_idx:' + str(batch_no) + last_img + '.jpg',real_full)
 				
 				img_idx += 1
-				
-		
-			print "D_loss", d_loss
-			print "G_loss", g_loss
+
 			
+			print ('d_loss', d_loss, d1_loss, d2_loss, d3_loss, d4_loss, d5_loss)
+			print ('g_loss', g_loss, g1_loss, g2_loss, g3_loss, g4_loss, g5_loss)
+			
+			print ('d_loss_noise', d_loss_noise)
+			print ('g_loss_noise', g_loss_noise)
+			if 0:
+				print('t1', t1)
+				print('t2', t2)
 				
 			print "LOSSES", d_loss, g_loss, batch_no, i, len(loaded_data['image_list'])/ args.batch_size
 			batch_no += 1
 			if (batch_no % args.save_every) == 0:
 				print "Saving Images, Model"
-				#save_for_vis(args.data_dir, real_images, fake_img, image_files)
-				save_path = saver.save(sess, "Data/Models/latest_model_baseline2_{}_temp.ckpt".format(args.data_set))
-		if i%5 == 0:
-			save_path = saver.save(sess, "Data/Models/baseline_model_after_{}_epoch_{}.ckpt".format(args.data_set, i))
+				#Lee commented the following line out because it crashed. No idea what it was trying to do.
+				#save_for_vis(args.data_dir, real_images, gen, image_files)
+				save_path = saver.save(sess, "Data/Models/latest_model_Semi6_{}_temp.ckpt".format(args.data_set))
+		if i in args.save_epoch:
+			save_path = saver.save(sess, "Data/ModelEval/Semi6_after_{}_epoch_{}.ckpt".format(i, args.data_set))
 
 def load_training_data(data_dir, data_set):
 	if data_set == 'flowers':
@@ -237,6 +307,7 @@ def get_training_batch(batch_no, batch_size, image_size, z_dim,
 
 		cnt = 0
 		image_files = []
+		#caption_text = [None]*batch_size
 		for i in range(batch_no * batch_size, batch_no * batch_size + batch_size):
 			idx = i % len(loaded_data['image_list'])
 			image_file =  join(data_dir, 'flowers/jpg/'+loaded_data['image_list'][idx])
@@ -250,12 +321,13 @@ def get_training_batch(batch_no, batch_size, image_size, z_dim,
 			wrong_images[cnt, :,:,:] = wrong_image_array
 
 			random_caption = random.randint(0,4)
+			#caption_text[i] = random_caption
 			captions[cnt,:] = loaded_data['captions'][ loaded_data['image_list'][idx] ][ random_caption ][0:caption_vector_length]
 			image_files.append( image_file )
 			cnt += 1
 
 		z_noise = np.random.uniform(-1, 1, [batch_size, z_dim])
-		return real_images, wrong_images, captions, z_noise, image_files
+		return real_images, wrong_images, captions, z_noise, image_files#, caption_text
 
 if __name__ == '__main__':
 	main()

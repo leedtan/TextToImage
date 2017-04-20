@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-#SBATCH --job-name=many7
-#SBATCH --output=many7.out
+#SBATCH --job-name=Many6
+#SBATCH --output=Many6.out
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=48:00:00
