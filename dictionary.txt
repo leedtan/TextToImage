@@ -1,0 +1,556 @@
+anemone
+apple blossom
+aster
+azalea
+baby's breath
+bachelor button
+begonia
+bellflower
+bells of Ireland
+bitterroot
+black-eyed Susan
+bluebells
+bluebonnet
+bougainvillea
+bouquet
+buttercup
+butterfly bush
+California poppy
+calendula
+calla lily
+camellia
+candytuft
+canna
+carnation
+carrion flower
+chicory
+chrysanthemum
+clover
+columbine
+cornflower
+corpse flower
+cosmo
+crocus
+daffodil
+dahlia
+daisy
+dandelion
+delphinium
+dianthus
+dogwood
+edelweiss
+floret
+florist
+flower
+forget-me-not
+foxglove
+freesia
+gardenia
+gerbera daisy
+gillyflower
+gladiolus
+goldenrod
+hawthorn
+heather
+hibiscus
+hollyhock
+honeysuckle
+hydrangea
+Indian blanket
+iris
+jasmine
+jessamine
+Johnny-jump-up
+jonquil
+kangaroo paw
+lady's slipper
+lantana
+larkspur
+laurel
+lavender
+lilac
+lily
+lily-of-the-valley
+magnolia
+mallow
+marigold
+mayflower
+mimosa
+mistletoe
+mock orange
+morning glory
+mountain laurel
+myrtle
+narcissus
+nasturtium
+oleander
+orange blossom
+orchid
+pansy
+pasque flower
+passionflower
+peach blossom
+peony
+petal
+phlox
+plumeria
+poinsettia
+poppy
+primrose
+pussy willow
+Queen Anne's lace
+ranunculus
+rhododendron
+rose
+safflower
+sego lily
+sepal
+snapdragon
+stock
+sunflower
+sweet pea
+thistle
+tickseed
+tiger lily
+trillium
+tulip
+Venus flytrap
+veronica
+vetch
+violet
+wallflower
+wildflowers
+wild prairie rose
+wisteria
+wolfsbane
+yucca flower
+zinnia
+pink
+purple
+orange
+colorful
+red
+white
+yellow
+green
+sky
+violet
+brown
+light
+dark
+colors
+fluorescent
+black
+rose
+tulip
+stem
+petals
+large
+bright
+dim
+centered
+above
+garden
+forest
+bird
+tree
+butterfly
+pot
+vase
+table
+chestnut
+cinnamon
+peach
+tan
+beige
+corn
+gold
+golden
+cyan
+teal
+aqua
+lavender
+amethyst
+fuchsia
+burgundy
+maroon
+crimson
+scarlet
+abloom
+abundant
+aromatic
+arranged
+artful
+artfully arranged
+artistic
+assorted
+attention-getting
+beautiful
+blooming
+blossom-filled
+blossoming
+blushing
+bold
+boldly colored
+botanical
+breathtaking
+bright
+brilliant
+budding
+captivating
+charming
+cheerful
+cheery
+cherished
+chic
+choice
+classic
+clustered
+color-coordinated
+colorful
+combined
+complementary
+contemporary
+country
+creative
+darling
+dazzling
+delicate
+delightful
+designed
+distinctive
+divine
+dramatic
+dreamy
+elegant
+enchanted
+enchanting
+exotic
+expressive
+exquisite
+extravagant
+eye-catching
+fanned
+farm-fresh
+fashionable
+favorite
+festive
+floral
+florist's choice
+florist-delivered
+flowering
+fragrant
+fresh
+fresh-cut
+fresh-from-the-garden
+freshly picked
+garden-fresh
+gathered
+glorious
+gorgeous
+graceful
+hand-arranged
+hand-delivered
+hand-gathered
+hand-selected
+heavenly
+impressive
+in bloom
+jewel-toned
+joyful
+kissed
+large
+lasting
+long-lasting
+long-stem
+lovely
+luminous
+luxurious
+magical
+magnificent
+majestic
+mesmerizing
+mixed
+modern
+multicolored
+nature's bounty
+nature's finest
+nestled
+one-of-a-kind
+orchard-fresh
+ornamental
+oversized
+paired
+passionate
+pastel
+petite
+playful
+pollenated
+precious
+premium
+pretty
+pristine
+prized
+radiant
+ravishing
+ready-to-bloom
+ready-to-burst
+ready-to-open
+regal
+rich
+romantic
+rustic
+seasonal
+select
+sensational
+sentimental
+showy
+silky
+silky-smooth
+soft
+sophisticated
+special
+spectacular
+striking
+stunning
+styled
+stylish
+summery
+sun-kissed
+sunny
+sweet
+sweetest
+tender
+touching
+traditional
+treasured
+tropical
+unforgettable
+unique
+unusual
+vibrant
+visually stimulating
+whimsical
+year-round
+young
+abundance
+accent plant
+appeal
+aroma
+arrangement
+array
+autumn
+awakening
+background
+basket
+beauty
+bloom
+blossom
+blush
+botany
+bouquet
+boutonniere
+brilliance
+bud
+budding stage
+bulb
+bunch
+bundle
+burst
+celebration
+centerpiece
+cheer
+collection
+color
+contempo
+corsage
+dawn
+delight
+dozen
+dream
+duet
+dusk
+Eden
+elegance
+enchantment
+fall
+fantasia
+field
+fields of ___
+fireworks
+flair
+floral farmers
+floral farms
+floret
+florist
+flower
+flower arrangement
+flower clusters
+flower shop
+foliage
+fragrance
+freshness
+garden
+gardener
+garland
+germination
+grandeur
+grove
+growers
+happiness
+harmony
+harvest
+hearts
+hue
+illumination
+impression
+inspiration
+kaleidoscope
+lei
+light
+look
+majesty
+medley
+mix
+moments
+moonlight
+morning
+mosaic
+nightfall
+nosegay
+orchard
+paradise
+petal
+plant
+planter
+playfulness
+plume
+poetry
+pollen
+posy
+potpourri
+presentation
+radiance
+rainbow
+romance
+rose with teddy bear
+scent
+season
+selection
+sensation
+shade
+shades of
+shoot
+showing
+smile
+sonata
+sophistication
+spathe
+spirit
+splash
+splendor
+spray
+spring
+springtime
+stem
+summer
+sun
+sunburst
+sunrise
+sunshine
+symphony
+texture
+touch
+treasure
+tribute
+trio
+tropics
+valley
+variety
+vase
+visual impact
+watercolor
+winter
+wreath
+accent
+arrange
+bear flowers
+blend
+bloom
+blossom
+blush
+brighten the room
+brighten their day
+bud
+burgeon
+burst
+burst into bloom
+captivate
+capture
+catch the light
+celebrate
+charm
+cherish
+combine
+complement
+congratulate
+contrast with
+coordinate
+create
+cultivate
+dazzle
+delight
+display
+embellish
+enchant
+express
+fan
+feature
+float
+flourish
+flower
+gather
+germinate
+give
+give off
+group
+grow
+hand-deliver
+hand-gather
+help say
+highlight
+impress
+make a statement
+make them smile
+mingle
+mix
+nestle
+open
+pair with
+pick
+plant
+poise
+present
+produce blooms
+receive
+reflects
+reveal
+say
+select
+send
+ship
+show
+showcase
+smell
+sow
+spread
+stand out against
+style
+surprise
+thank
+touch
+touch her heart
+transform
+win them over
+wish
+yield
