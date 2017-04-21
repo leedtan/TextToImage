@@ -130,11 +130,12 @@ def main():
 
     word_dict = load_flower_dict("dictionary.txt")
     flowerdataDir = 'Data/'
-    flowerdataset = 'flowers'
-    dataDir = "Data/coco"
-    dataType = "train2014"
-    flower_loaded_data = load_training_data( flowerdataDir, flowerdataset, data_Type = "train2014")
+    augDataDir = '/Data/augment/'
+
+    flower_loaded_data = load_training_data(flowerdataDir, 'flowers')
     flower_image_captions = load_flower_captions("Data")
+    aug_loaded_data = load_training_data(augDataDir, 'augment')
+    aug_image_captions = aug_loaded_data['captions']
 
     model_options = {
         'z_dim' : args.z_dim,
@@ -208,7 +209,8 @@ def main():
 
     
             annotations, caption_vectors, real_images = get_combination_batch(
-                64, 64, 0, batch_no, flower_loaded_data, flower_image_captions, word_dict)
+                64, 64, 0, batch_no, flower_loaded_data, flower_image_captions,
+                aug_loaded_data, aug_image_captions, word_dict)
             wrong_images = np.concatenate((real_images[30:,:,:,:], real_images[:30,:,:,:]),0)
             #########################
             z_noise = np.random.rand(args.batch_size, 10) 
@@ -512,6 +514,14 @@ def main():
         if 0:#i%5 == 0:
             save_path = saver.save(sess, "Data/Models/stacked1_after_{}_epoch_{}.ckpt".format(args.data_set, i))
 
+def lookup_vector(sentences, word_dict):
+    vectors = np.zeros((len(sentences), len(word_dict)))
+    for i in range(len(sentences)):
+        for j in sentences[i].split():
+            if j in word_dict:
+                vectors[i][word_dict[j]] = 1
+    return vectors
+
 def load_training_data(data_dir, data_set):
     if data_set == 'flowers':
         h = h5py.File(join(data_dir, 'flower_tv.hdf5'))
@@ -524,71 +534,30 @@ def load_training_data(data_dir, data_set):
         img_75 = int(len(image_list)*0.75)
         training_image_list = image_list[0:img_75]
         random.shuffle(training_image_list)
-        
+
         return {
             'image_list' : training_image_list,
             'captions' : flower_captions,
             'data_length' : len(training_image_list)
+        }
+    elif data_set == 'augment':
+        image_list = []
+        captions = {}
+        cwd = os.getcwd()
+        file_list = os.listdir(cwd + data_dir)
+        for f in file_list:
+            if os.path.isdir(cwd+data_dir+'/'+f):
+                for image in os.listdir(cwd+data_dir+'/'+f):
+                    if 'jpg' in image:
+                        image_list.append(f+'/'+image)
+                        captions[f+'/'+image] = f
+        random.shuffle(image_list)
+        return {
+            'image_list' : image_list,
+            'captions' : captions,
+            'data_length' : len(image_list)
         }
     
-    else:
-        with open(join(data_dir, 'meta_train.pkl')) as f:
-            meta_data = pickle.load(f)
-        # No preloading for MS-COCO
-        return meta_data
-
-def save_for_vis(data_dir, real_images, generated_images, image_files):
-    img_size = 64
-    shutil.rmtree( join(data_dir, 'samples') )
-    os.makedirs( join(data_dir, 'samples') )
-
-    for i in range(0, real_images.shape[0]):
-        real_image_255 = np.zeros( (img_size,img_size,3), dtype=np.uint8)
-        real_images_255 = (real_images[i,:,:,:])
-        scipy.misc.imsave( join(data_dir, 'samples/{}_{}.jpg'.format(i, image_files[i].split('/')[-1] )) , real_images_255)
-
-        fake_image_255 = np.zeros( (img_size,img_size,3), dtype=np.uint8)
-        fake_images_255 = (generated_images[i,:,:,:])
-        scipy.misc.imsave(join(data_dir, 'samples/fake_image_{}.jpg'.format(i)), fake_images_255)
-
-
-
-
-def lookup_vector(sentences, word_dict):
-    vectors = np.zeros((len(sentences), len(word_dict)))
-    for i in range(len(sentences)):
-        for j in sentences[i].split():
-            if j in word_dict:
-                vectors[i][word_dict[j]] = 1
-    return vectors
-
-def load_training_data(data_dir, data_set, data_Type = "train2014"):
-    if data_set == 'flowers':
-        h = h5py.File(join(data_dir, 'flower_tv.hdf5'))
-        flower_captions = {}
-        for ds in h.items():
-            flower_captions[ds[0]] = np.array(ds[1])
-        image_list = [key for key in flower_captions]
-        image_list.sort()
-
-        img_75 = int(len(image_list)*0.75)
-        training_image_list = image_list[0:img_75]
-        random.shuffle(training_image_list)
-
-        return {
-            'image_list' : training_image_list,
-            'captions' : flower_captions,
-            'data_length' : len(training_image_list)
-        }
-
-    #else:
-    #    annFile= '%s/annotations/captions_%s.json'%(data_dir,data_Type)
-    #    imageFile ='%s/annotations/instances_%s.json'%(data_dir,data_Type)
-    #    coco=COCO(imageFile)
-    #    coco_caps=COCO(annFile)
-    #    imgIds = coco.getImgIds()
-    #    return {'coco': coco, 'caps': coco_caps, 'imgId' : imgIds}
-
 # flower_loaded_data = load_training_data( flowerdataDir, flowerdataset, data_Type = "train2014")
 # coco_loaded_data = load_training_data('Data/coco', "coco", data_Type = "train2014")
 # Please load two variables above to make sure it works
@@ -672,82 +641,31 @@ def get_flower_batch(image_size, data_dir, batch_no, flower_batch_size, loaded_d
     #return real_images, wrong_images, captions, z_noise, image_files
     return text_captions, real_images
 
+def get_augment_batch(image_size, data_dir, batch_no, augment_batch_size, loaded_data, image_captions):
+    real_images = np.zeros((augment_batch_size, 64, 64, 3))
+    text_captions = []
+    cnt = 0
+    for i in range(batch_no * augment_batch_size, batch_no * augment_batch_size + augment_batch_size):
+        idx = i % len(loaded_data['image_list'])
+        image_file =  join(data_dir, 'augment/'+ loaded_data['image_list'][idx])
+        image_array = image_processing.load_image_array(image_file, image_size)
+        real_images[cnt,:,:,:] = image_array
+        text_captions.append(image_captions[loaded_data['image_list'][idx]])
+        cnt += 1
 
-def get_combination_batch(image_size, flower_batch_size, bird_batch_size, batch_no, flower_loaded_data, flower_image_captions, model):
+    return text_captions, real_images
+
+def get_combination_batch(image_size, flower_batch_size, aug_batch_size, batch_no, flower_loaded_data, flower_image_captions, aug_loaded_data, aug_image_captions, word_dict):
     
-    #imgIds = coco.getImgIds()
-    #image_captions = load_flower_captions("Data")
-    #coco_anns, coco_images, coco_wrong_images, coco_image_files = get_coco_batch(image_size, dataDir, dataType, coco, coco_caps, coco_batch_size, imgIds)
-    flowerdataDir = "Data/"
-    text_anns, flower_images = get_flower_batch(image_size, flowerdataDir, batch_no, flower_batch_size, flower_loaded_data, flower_image_captions)
-    annotations =  text_anns
-    #thought_vectors = tools.encode(model, annotations)
-    thought_vectors = lookup_vector(annotations, model)
-    images = flower_images
-    new_index = np.random.permutation(list(range(int(flower_batch_size + bird_batch_size))))
+    dataDir = "Data/"
+    text_anns, flower_images = get_flower_batch(image_size, dataDir, batch_no, flower_batch_size, flower_loaded_data, flower_image_captions)
+    aug_anns, aug_images = get_augment_batch(image_size, dataDir, batch_no, aug_batch_size, aug_loaded_data, aug_image_captions)
+    annotations =  text_anns + aug_anns
+    
+    thought_vectors = lookup_vector(annotations, word_dict)
+    images = np.concatenate((flower_images, aug_images), axis=0)
+    new_index = np.random.permutation(list(range(int(flower_batch_size + aug_batch_size))))
     return np.array(annotations)[new_index], thought_vectors[new_index], images[new_index]
-
-
-def get_training_batch(batch_no, batch_size, image_size, z_dim, 
-    caption_vector_length, split, data_dir, data_set, loaded_data = None):
-    if data_set == 'mscoco':
-        with h5py.File( join(data_dir, 'tvs/'+split + '_tvs_' + str(batch_no))) as hf:
-            caption_vectors = np.array(hf.get('tv'))
-            caption_vectors = caption_vectors[:,0:caption_vector_length]
-        with h5py.File( join(data_dir, 'tvs/'+split + '_tv_image_id_' + str(batch_no))) as hf:
-            image_ids = np.array(hf.get('tv'))
-
-        real_images = np.zeros((batch_size, image_size, image_size, 3))
-        wrong_images = np.zeros((batch_size, image_size, image_size, 3))
-        
-        image_files = []
-        for idx, image_id in enumerate(image_ids):
-            image_file = join(data_dir, '%s2014/COCO_%s2014_%.12d.jpg'%(split, split, image_id) )
-            image_array = image_processing.load_image_array(image_file, image_size)
-            real_images[idx,:,:,:] = image_array
-            image_files.append(image_file)
-        
-        # TODO>> As of Now, wrong images are just shuffled real images.
-        first_image = real_images[0,:,:,:]
-        for i in range(0, batch_size):
-            if i < batch_size - 1:
-                wrong_images[i,:,:,:] = real_images[i+1,:,:,:]
-            else:
-                wrong_images[i,:,:,:] = first_image
-
-        z_noise = np.random.uniform(-1, 1, [batch_size, z_dim])
-
-
-        return real_images, wrong_images, caption_vectors, z_noise, image_files
-
-    if data_set == 'flowers':
-        real_images = np.zeros((batch_size, image_size, image_size, 3))
-        wrong_images = np.zeros((batch_size, image_size, image_size, 3))
-        captions = np.zeros((batch_size, caption_vector_length))
-
-        cnt = 0
-        image_files = []
-        #caption_text = [None]*batch_size
-        for i in range(batch_no * batch_size, batch_no * batch_size + batch_size):
-            idx = i % len(loaded_data['image_list'])
-            image_file =  join(data_dir, 'flowers/jpg/'+loaded_data['image_list'][idx])
-            image_array = image_processing.load_image_array(image_file, image_size)
-            real_images[cnt,:,:,:] = image_array
-            
-            # Improve this selection of wrong image
-            wrong_image_id = random.randint(0,len(loaded_data['image_list'])-1)
-            wrong_image_file =  join(data_dir, 'flowers/jpg/'+loaded_data['image_list'][wrong_image_id])
-            wrong_image_array = image_processing.load_image_array(wrong_image_file, image_size)
-            wrong_images[cnt, :,:,:] = wrong_image_array
-
-            random_caption = random.randint(0,4)
-            #caption_text[i] = random_caption
-            captions[cnt,:] = loaded_data['captions'][ loaded_data['image_list'][idx] ][ random_caption ][0:caption_vector_length]
-            image_files.append( image_file )
-            cnt += 1
-
-        z_noise = np.random.uniform(-1, 1, [batch_size, z_dim])
-        return real_images, wrong_images, captions, z_noise, image_files#, caption_text
 
 if __name__ == '__main__':
     main()

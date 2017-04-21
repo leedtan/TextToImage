@@ -11,10 +11,6 @@ from Utils import image_processing
 
 def main():
     prince = True
-    #model_dir = './Data/ModelEval/'
-    #os.chdir(model_dir)
-    #model_1 = 'x'
-    #model_2 = 'latest_model_Semi6_flowers_temp.ckpt'
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--z_dim', type=int, default=10,
@@ -47,10 +43,10 @@ def main():
     parser.add_argument('--beta1', type=float, default =.5,#LEECHANGE default=0.5,
                        help='Momentum for Adam Update')
 
-    parser.add_argument('--modelFile1', type=str, default = "./Data/ModelEval/weitaobattle1.ckpt",
+    parser.add_argument('--modelFile1', type=str, default = "./Data/ModelEval/Server99_after_7_epoch_flowers.ckpt",
                        help='The first model to be compared')
     
-    parser.add_argument('--modelFile2', type=str, default = "./Data/ModelEval/weitaobattle2.ckpt",
+    parser.add_argument('--modelFile2', type=str, default = "./Data/ModelEval/Server100_after_7_epoch_flowers.ckpt",
                        help='The second model to be compared')
     
     parser.add_argument('--data_set', type=str, default="flowers",
@@ -103,7 +99,6 @@ def main():
     tf.reset_default_graph()
     sess.close()
     
-    
     # Create second model
     model_options = {
             'z_dim' : args.z_dim,
@@ -119,8 +114,6 @@ def main():
     gan2 = model.GAN(model_options)
     input_tensors2, variables2, loss2, outputs2 = gan2.build_model(args.beta1, .9, 1e-4)
         
-    #g_optim2 = gan2.g_optim
-    #d_optim2 = gan2.d_optim
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.35)
 
     sess2 = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
@@ -132,6 +125,8 @@ def main():
         tf.initialize_all_variables().run()
     
     saver2 = tf.train.Saver()
+    
+    saver2.restore(sess2, args.modelFile2)
     
     # Get logits from the second model
     p_3_fake_img_logit, p_3_fake_txt_logit = sess2.run(
@@ -145,13 +140,8 @@ def main():
                     input_tensors2['noise_gen'] : 0
             })
     
-    g3_test_loss = np.mean(cross_entropy(p_3_fake_img_logit, np.ones((args.batch_size, 1)))) + np.mean(cross_entropy(p_3_fake_txt_logit, np.ones((args.batch_size, 1))))
-    d3_test_loss = np.mean(cross_entropy(p_3_fake_img_logit, np.zeros((args.batch_size, 1)))) + np.mean(cross_entropy(p_3_fake_txt_logit, np.zeros((args.batch_size, 1))))
-    print('g loss using generator 1', g3_test_loss)
-    print('g loss using generator 1', d3_test_loss)
+    g1_d3_test_loss = cross_entropy(p_3_fake_img_logit, np.zeros((args.batch_size, 1))) + cross_entropy(p_3_fake_txt_logit, np.zeros((args.batch_size, 1)))
     
-    # Restore the second model:
-    saver2.restore(sess2, args.modelFile2)
     # Get output image from second model
     img3 = sess2.run(outputs2['img3'],
         feed_dict = {
@@ -164,6 +154,20 @@ def main():
     tf.reset_default_graph()
     sess2.close()
     
+    model_options = {
+            'z_dim' : args.z_dim,
+            't_dim' : args.t_dim,
+            'batch_size' : args.batch_size,
+            'image_size' : args.image_size,
+            'gf_dim' : args.gf_dim,
+            'df_dim' : args.df_dim,
+            'gfc_dim' : args.gfc_dim,
+            'caption_vector_length' : args.caption_vector_length
+        }
+    
+    gan1 = model.GAN(model_options)
+    input_tensors, variables, loss, outputs = gan1.build_model(args.beta1, .9, 1e-4)
+    
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.35)
 
     sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
@@ -175,6 +179,7 @@ def main():
     
     saver = tf.train.Saver()
     
+    saver.restore(sess, args.modelFile1)
     # Get logits from the first model
     p_3_fake_img_logit, p_3_fake_txt_logit = sess.run(
         [outputs['output_p_3_fake_img_logit'],outputs['output_p_3_fake_txt_logit']],
@@ -187,13 +192,16 @@ def main():
                     input_tensors['noise_gen'] : 0
             })
     
-    g3_test_loss = np.mean(cross_entropy(p_3_fake_img_logit, np.ones((args.batch_size, 1)))) + np.mean(cross_entropy(p_3_fake_txt_logit, np.ones((args.batch_size, 1))))
-    d3_test_loss = np.mean(cross_entropy(p_3_fake_img_logit, np.zeros((args.batch_size, 1)))) + np.mean(cross_entropy(p_3_fake_txt_logit, np.zeros((args.batch_size, 1))))
-    print('g loss using generator 2', g3_test_loss)
-    print('g loss using generator 2', d3_test_loss)
+    g2_d3_test_loss = cross_entropy(p_3_fake_img_logit, np.zeros((args.batch_size, 1))) + cross_entropy(p_3_fake_txt_logit, np.zeros((args.batch_size, 1)))
+    g1win = 0
+    g2win = 0
+    for i in range(g2_d3_test_loss.shape[0]):
+        if g1_d3_test_loss[i][0] > g2_d3_test_loss[i][0]:
+            g1win = g1win + 1
+        else:
+            g2win = g2win + 1
+    print(g1win, g2win)
     
-def reshape(x, arr):
-    return tf.reshape(x, [int(a) for a in arr])
     
 def cross_entropy(logits, labels):
     loss = np.maximum(logits, 0) - logits * labels + np.log(1 + np.exp(-np.abs(labels)))

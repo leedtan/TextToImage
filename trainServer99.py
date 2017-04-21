@@ -480,10 +480,16 @@ def main():
                 
             batch_no += 1
             if 0:#(batch_no % args.save_every) == 0:
+                print('epoch:', i, 'batch:', batch_no)
+                print ('d_loss', d1_loss, d2_loss, d3_loss)
+                print ('g_loss', g1_loss, g2_loss, g3_loss)
+                print ('d_loss_noise', d1_loss_noise, d2_loss_noise, d3_loss_noise)
+                print ('g_loss_noise', g1_loss_noise, g2_loss_noise, g3_loss_noise)
                 #Lee commented the following line out because it crashed. No idea what it was trying to do.
                 #save_for_vis(args.data_dir, real_images, gen, image_files)
-                save_path = saver.save(sess, "Data/Models/weitaobattle1.ckpt")
-        if i in args.save_epoch:
+                #save_path = saver.save(sess, "Data/Models/weitaobattle1.ckpt")
+        
+        if 0:#i in args.save_epoch:
             save_path = saver.save(sess, "Data/ModelEval/Server99_after_{}_epoch_{}.ckpt".format(i, args.data_set))
 
 def load_training_data(data_dir, data_set):

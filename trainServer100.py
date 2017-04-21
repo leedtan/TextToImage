@@ -483,7 +483,7 @@ def main():
                 #Lee commented the following line out because it crashed. No idea what it was trying to do.
                 #save_for_vis(args.data_dir, real_images, gen, image_files)
                 save_path = saver.save(sess, "Data/Models/weitaobattle1.ckpt")
-        if i in args.save_epoch:
+        if 0:#i in args.save_epoch:
             save_path = saver.save(sess, "Data/ModelEval/Server100_after_{}_epoch_{}.ckpt".format(i, args.data_set))
 
 def load_training_data(data_dir, data_set):
