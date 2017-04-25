@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-import modelvector3 as model
+import modelvector7 as model
 import sys
 import argparse
 import pickle

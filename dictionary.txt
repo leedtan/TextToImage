@@ -1,6 +1,6 @@
 anemone
 apple blossom
-aster
+sakura
 azalea
 baby's breath
 bachelor button
@@ -10,7 +10,7 @@ bells of Ireland
 bitterroot
 black-eyed Susan
 bluebells
-bluebonnet
+carnations
 bougainvillea
 bouquet
 buttercup
@@ -63,14 +63,14 @@ jessamine
 Johnny-jump-up
 jonquil
 kangaroo paw
-lady's slipper
+lilies
 lantana
 larkspur
 laurel
 lavender
 lilac
 lily
-lily-of-the-valley
+lillies
 magnolia
 mallow
 marigold
@@ -181,8 +181,8 @@ abundant
 aromatic
 arranged
 artful
-artfully arranged
-artistic
+cocks
+comb
 assorted
 attention-getting
 beautiful
@@ -210,7 +210,7 @@ color-coordinated
 colorful
 combined
 complementary
-contemporary
+gentian
 country
 creative
 darling
@@ -221,7 +221,7 @@ designed
 distinctive
 divine
 dramatic
-dreamy
+limonium
 elegant
 enchanted
 enchanting
@@ -233,7 +233,7 @@ eye-catching
 fanned
 farm-fresh
 fashionable
-favorite
+viola
 festive
 floral
 florist's choice
@@ -271,7 +271,7 @@ magnificent
 majestic
 mesmerizing
 mixed
-modern
+natural
 multicolored
 nature's bounty
 nature's finest
@@ -308,13 +308,13 @@ showy
 silky
 silky-smooth
 soft
-sophisticated
+hyacinth
 special
 spectacular
 striking
 stunning
 styled
-stylish
+william
 summery
 sun-kissed
 sunny
@@ -417,7 +417,7 @@ moonlight
 morning
 mosaic
 nightfall
-nosegay
+stigma
 orchard
 paradise
 petal
@@ -444,7 +444,7 @@ shoot
 showing
 smile
 sonata
-sophistication
+grape
 spathe
 spirit
 splash
@@ -491,17 +491,16 @@ catch the light
 celebrate
 charm
 cherish
-combine
 complement
 congratulate
 contrast with
 coordinate
 create
-cultivate
+pistil
 dazzle
 delight
 display
-embellish
+receptacle
 enchant
 express
 fan
@@ -511,23 +510,23 @@ flourish
 flower
 gather
 germinate
-give
+stamen
 give off
 group
-grow
+filament
 hand-deliver
 hand-gather
 help say
 highlight
 impress
 make a statement
-make them smile
+them smile
 mingle
 mix
 nestle
 open
 pair with
-pick
+anther
 plant
 poise
 present
@@ -535,12 +534,12 @@ produce blooms
 receive
 reflects
 reveal
-say
-select
-send
-ship
+wet
+arum
+glistening
+ovule
 show
-showcase
+ovary
 smell
 sow
 spread
@@ -549,7 +548,7 @@ style
 surprise
 thank
 touch
-touch her heart
+touch heart
 transform
 win them over
 wish

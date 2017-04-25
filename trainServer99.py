@@ -81,10 +81,10 @@ def main():
     parser.add_argument('--image_size', type=int, default=64,
                        help='Image Size a, a x a')
 
-    parser.add_argument('--gf_dim', type=int, default=4,#30
+    parser.add_argument('--gf_dim', type=int, default=14,#30
                        help='Number of conv in the first layer gen.')
 
-    parser.add_argument('--df_dim', type=int, default=4,#128,#12
+    parser.add_argument('--df_dim', type=int, default=14,#128,#12
                        help='Number of conv in the first layer discr.')
 
     parser.add_argument('--gfc_dim', type=int, default=1024,
