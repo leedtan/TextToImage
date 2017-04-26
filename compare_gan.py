@@ -52,7 +52,9 @@ def main():
     save_epoch = [2,5,7,10]
     
     cols = ['epoch_' + str(i) for i in save_epoch]
-    df = pd.DataFrame(index = cols, columns = cols)
+    df_loss = pd.DataFrame(index = cols, columns = cols)
+    df_img = pd.DataFrame(index = cols, columns = cols)
+    df_txt = pd.DataFrame(index = cols, columns = cols)
     
     for i in range(len(save_epoch)):
         for j in range((len(save_epoch))):
@@ -136,7 +138,7 @@ def main():
             saver2.restore(sess2, modelFile2)
             
             # Get logits from the second model
-            p_3_fake_img_logit, p_3_fake_txt_logit = sess2.run(
+            g1_p_3_fake_img_logit, g1_p_3_fake_txt_logit = sess2.run(
                 [outputs2['output_p_3_fake_img_logit'],outputs2['output_p_3_fake_txt_logit']],
                 feed_dict= {
                     input_tensors2['t_real_caption'] : caption_vectors,
@@ -147,7 +149,7 @@ def main():
                             input_tensors2['noise_gen'] : 0
                     })
             
-            g1_d3_test_loss = cross_entropy(p_3_fake_img_logit, np.ones((args.batch_size, 1))) + cross_entropy(p_3_fake_txt_logit, np.ones((args.batch_size, 1)))
+            g1_d3_test_loss = cross_entropy(g1_p_3_fake_img_logit, np.ones((args.batch_size, 1))) + cross_entropy(g1_p_3_fake_txt_logit, np.ones((args.batch_size, 1)))
             
             # Get output image from second model
             img3 = sess2.run(outputs2['img3'],
@@ -188,7 +190,7 @@ def main():
             
             saver.restore(sess, modelFile1)
             # Get logits from the first model
-            p_3_fake_img_logit, p_3_fake_txt_logit = sess.run(
+            g2_p_3_fake_img_logit, g2_p_3_fake_txt_logit = sess.run(
                 [outputs['output_p_3_fake_img_logit'],outputs['output_p_3_fake_txt_logit']],
                 feed_dict= {
                     input_tensors['t_real_caption'] : caption_vectors,
@@ -199,20 +201,43 @@ def main():
                             input_tensors['noise_gen'] : 0
                     })
             
-            g2_d3_test_loss = cross_entropy(p_3_fake_img_logit, np.ones((args.batch_size, 1))) + cross_entropy(p_3_fake_txt_logit, np.ones((args.batch_size, 1)))
-            g1win = 0
-            g2win = 0
+            g2_d3_test_loss = cross_entropy(g2_p_3_fake_img_logit, np.ones((args.batch_size, 1))) + cross_entropy(g2_p_3_fake_txt_logit, np.ones((args.batch_size, 1)))
+            g1_loss_win = 0
+            g2_loss_win = 0
+            g1_img_win = 0
+            g2_img_win = 0
+            g1_txt_win = 0
+            g2_txt_win = 0
             for idx in range(g2_d3_test_loss.shape[0]):
+                # Compare loss
                 if g1_d3_test_loss[idx][0] < g2_d3_test_loss[idx][0]:
-                    g1win = g1win + 1
+                    g1_loss_win += 1
                     print(g1_d3_test_loss[idx][0],'<',  g2_d3_test_loss[idx][0], 'g1 wins')
                 else:
-                    g2win = g2win + 1
+                    g2_loss_win += 1
                     print(g1_d3_test_loss[idx][0],'>',  g2_d3_test_loss[idx][0], 'g2 wins')
-            df.loc[cols[i],cols[j]] = str(g2win)+'/'+str(g1win)
+                # Compare image logits
+                if g1_p_3_fake_img_logit[idx][0] > g2_p_3_fake_img_logit[idx][0]:
+                    g1_img_win += 1
+                    print(g1_p_3_fake_img_logit[idx][0],'>',  g2_p_3_fake_img_logit[idx][0], 'g1 wins')
+                else:
+                    g2_img_win += 1
+                    print(g1_p_3_fake_img_logit[idx][0],'<',  g2_p_3_fake_img_logit[idx][0], 'g2 wins')
+                # Compare text logits    
+                if g1_p_3_fake_txt_logit[idx][0] > g2_p_3_fake_txt_logit[idx][0]:
+                    g1_txt_win += 1
+                    print(g1_p_3_fake_txt_logit[idx][0],'>',  g2_p_3_fake_txt_logit[idx][0], 'g1 wins')
+                else:
+                    g2_txt_win += 1
+                    print(g1_p_3_fake_txt_logit[idx][0],'<',  g2_p_3_fake_txt_logit[idx][0], 'g2 wins')
+            df_loss.loc[cols[i],cols[j]] = str(g2_loss_win)+'/'+str(g1_loss_win)
+            df_img.loc[cols[i],cols[j]] = str(g2_img_win)+'/'+str(g1_img_win)
+            df_txt.loc[cols[i],cols[j]] = str(g2_txt_win)+'/'+str(g1_txt_win)
             tf.reset_default_graph()
             sess.close()
-    df.to_csv('compare_result.csv')
+    df_loss.to_csv('compare_loss.csv')
+    df_img.to_csv('compare_img.csv')
+    df_txt.to_csv('compare_txt.csv')
     
 def cross_entropy(logits, labels):
     loss = np.maximum(logits, 0) - logits * labels + np.log(1 + np.exp(-np.abs(labels)))
