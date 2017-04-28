@@ -94,8 +94,8 @@ def main():
                     input_tensors1['noise_indicator'] : 0,
                     input_tensors1['noise_gen'] : 0
                 })
-            g1_d1_p_3_fake_img_logit, g1_d1_p_3_fake_txt_logit = sess1.run(
-                [outputs1['output_p_3_fake_img_logit'],outputs1['output_p_3_fake_txt_logit']],
+            g1_d1_p_3_gen_img_logit, g1_d1_p_3_gen_txt_logit = sess1.run(
+                [outputs1['output_p_3_gen_img_logit'],outputs1['output_p_3_gen_txt_logit']],
                 feed_dict= {
                     input_tensors1['t_real_caption'] : caption_vectors,
                             input_tensors1['t_z'] : z_noise,
@@ -104,7 +104,9 @@ def main():
                             input_tensors1['noise_disc'] : 0,
                             input_tensors1['noise_gen'] : 0
                     })
-            g1_d1_loss = cross_entropy(g1_d1_p_3_fake_img_logit, np.ones((args.batch_size, 1))) + cross_entropy(g1_d1_p_3_fake_txt_logit, np.ones((args.batch_size, 1)))            
+            #print('g1_d1_p_3_gen_img_logit:')
+            #print(g1_d1_p_3_gen_img_logit)
+            g1_d1_loss = cross_entropy(g1_d1_p_3_gen_img_logit, np.ones((args.batch_size, 1))) + cross_entropy(g1_d1_p_3_gen_txt_logit, np.ones((args.batch_size, 1)))            
             tf.reset_default_graph()
             sess1.close()            
             # Create second model
@@ -128,8 +130,8 @@ def main():
             saver2 = tf.train.Saver()            
             saver2.restore(sess2, modelFile2)            
             # Get logits from the second model
-            g1_d2_p_3_fake_img_logit, g1_d2_p_3_fake_txt_logit = sess2.run(
-                [outputs2['output_p_3_fake_img_logit'],outputs2['output_p_3_fake_txt_logit']],
+            g1_d2_p_3_gen_img_logit, g1_d2_p_3_gen_txt_logit = sess2.run(
+                [outputs2['output_p_3_gen_img_logit'],outputs2['output_p_3_gen_txt_logit']],
                 feed_dict= {
                     input_tensors2['t_real_caption'] : caption_vectors,
                             input_tensors2['t_z'] : z_noise,
@@ -138,7 +140,7 @@ def main():
                             input_tensors2['noise_disc'] : 0,
                             input_tensors2['noise_gen'] : 0
                     })            
-            g1_d2_loss = cross_entropy(g1_d2_p_3_fake_img_logit, np.ones((args.batch_size, 1))) + cross_entropy(g1_d2_p_3_fake_txt_logit, np.ones((args.batch_size, 1)))            
+            g1_d2_loss = cross_entropy(g1_d2_p_3_gen_img_logit, np.ones((args.batch_size, 1))) + cross_entropy(g1_d2_p_3_gen_txt_logit, np.ones((args.batch_size, 1)))            
             # Get output image from second model
             g2_img3 = sess2.run(outputs2['img3'],
                 feed_dict = {
@@ -148,8 +150,8 @@ def main():
                     input_tensors2['noise_gen'] : 0
                 })            
             # Get logits from the second model
-            g2_d2_p_3_fake_img_logit, g2_d2_p_3_fake_txt_logit = sess2.run(
-                [outputs2['output_p_3_fake_img_logit'],outputs2['output_p_3_fake_txt_logit']],
+            g2_d2_p_3_gen_img_logit, g2_d2_p_3_gen_txt_logit = sess2.run(
+                [outputs2['output_p_3_gen_img_logit'],outputs2['output_p_3_gen_txt_logit']],
                 feed_dict= {
                     input_tensors2['t_real_caption'] : caption_vectors,
                             input_tensors2['t_z'] : z_noise,
@@ -158,7 +160,7 @@ def main():
                             input_tensors2['noise_disc'] : 0,
                             input_tensors2['noise_gen'] : 0
                     })            
-            g2_d2_loss = cross_entropy(g2_d2_p_3_fake_img_logit, np.ones((args.batch_size, 1))) + cross_entropy(g2_d2_p_3_fake_txt_logit, np.ones((args.batch_size, 1)))            
+            g2_d2_loss = cross_entropy(g2_d2_p_3_gen_img_logit, np.ones((args.batch_size, 1))) + cross_entropy(g2_d2_p_3_gen_txt_logit, np.ones((args.batch_size, 1)))            
             tf.reset_default_graph()
             sess2.close()            
             model_options = {
@@ -181,8 +183,8 @@ def main():
             saver = tf.train.Saver()          
             saver.restore(sess1, modelFile1)
             # Get logits from the first model
-            g2_d1_p_3_fake_img_logit, g2_d1_p_3_fake_txt_logit = sess1.run(
-                [outputs1['output_p_3_fake_img_logit'],outputs1['output_p_3_fake_txt_logit']],
+            g2_d1_p_3_gen_img_logit, g2_d1_p_3_gen_txt_logit = sess1.run(
+                [outputs1['output_p_3_gen_img_logit'],outputs1['output_p_3_gen_txt_logit']],
                 feed_dict= {
                     input_tensors1['t_real_caption'] : caption_vectors,
                             input_tensors1['t_z'] : z_noise,
@@ -191,25 +193,29 @@ def main():
                             input_tensors1['noise_disc'] : 0,
                             input_tensors1['noise_gen'] : 0
                     })
+            #print('g1_d1_p_3_gen_img_logit:')
+            #print(g1_d1_p_3_gen_img_logit)
+            #print('g2_d1_p_3_gen_img_logit:')
+            #print(g2_d1_p_3_gen_img_logit)
             tf.reset_default_graph()
             sess1.close()
-            g2_d1_loss = cross_entropy(g2_d1_p_3_fake_img_logit, np.ones((args.batch_size, 1))) + cross_entropy(g2_d1_p_3_fake_txt_logit, np.ones((args.batch_size, 1)))
+            g2_d1_loss = cross_entropy(g2_d1_p_3_gen_img_logit, np.ones((args.batch_size, 1))) + cross_entropy(g2_d1_p_3_gen_txt_logit, np.ones((args.batch_size, 1)))
             g1_wins_on_d2 = 0
             g2_wins_on_d1 = 0
             for idx in range(g2_d1_loss.shape[0]):
                 # Compare loss on disc 1
                 if g1_d1_loss[idx][0] > g2_d1_loss[idx][0]:
                     g2_wins_on_d1 += 1
-                    print(g2_d1_loss[idx][0],'<', g1_d1_loss[idx][0], 'g2 wins')
+                    print(g2_d1_loss[idx][0],'<', g1_d1_loss[idx][0], 'g2 wins on d1')
                 else:
-                    print(g2_d1_loss[idx][0],'>', g1_d1_loss[idx][0], 'g1 wins')                
+                    print(g2_d1_loss[idx][0],'>', g1_d1_loss[idx][0], 'g1 wins on d1')                
                 
                 # Compare loss on disc 2
                 if g1_d2_loss[idx][0] < g2_d2_loss[idx][0]:
                     g1_wins_on_d2 += 1
-                    print(g1_d2_loss[idx][0],'<', g2_d2_loss[idx][0], 'g1 wins')
+                    print(g1_d2_loss[idx][0],'<', g2_d2_loss[idx][0], 'g1 wins on d2')
                 else:
-                    print(g1_d2_loss[idx][0],'>', g2_d2_loss[idx][0], 'g2 wins')
+                    print(g1_d2_loss[idx][0],'>', g2_d2_loss[idx][0], 'g2 wins on d2')
                 
             df_loss.loc[cols[i],cols[j]] = str(g2_wins_on_d1)+'/'+str(g1_wins_on_d2)
     df_loss.to_csv('compare_loss.csv')
