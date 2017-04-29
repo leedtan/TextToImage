@@ -546,7 +546,7 @@ class GAN:
         
         d_loss_noise = d_loss_real_img + \
                 .2*(d_loss_wrong + d_loss_wrongcap1 + d_loss_wrongcap2) + \
-                d1_loss_gen_noise + d2_loss_gen_noise + d3_loss_gen_noise + \
+                d1_loss_gen_noise + d2_loss_gen_noise + d3_loss_gen_noise
         d_loss = d_loss_real + \
                 .2*(d_loss_wrong + d_loss_wrongcap1 + d_loss_wrongcap2)  + \
                 d1_loss_gen + d2_loss_gen + d3_loss_gen

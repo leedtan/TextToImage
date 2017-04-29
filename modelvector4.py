@@ -665,8 +665,8 @@ class GAN:
             'disc_real_vals' : disc_real_vals,
             'disc_wrong_vals': disc_wrong_vals,
             'disc_fake_vals' : disc_fake_vals,
-            'output_p_3_fake_txt_logit' : p_3_fake_txt_logit,
-            'output_p_3_fake_img_logit' : p_3_fake_img_logit
+            'output_p_3_gen_txt_logit' : p_3_gen_txt_logit,
+            'output_p_3_gen_img_logit' : p_3_gen_img_logit
         }
 
         

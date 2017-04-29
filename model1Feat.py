@@ -559,7 +559,7 @@ class GAN:
         
         g_loss_noise = 1*(g1_loss_noise*mul1 + g2_loss_noise/2*mul2 + g3_loss_noise/4*mul3) + \
                 self.trans_mult*(g1_t1_loss_noise*mul1 + g2_t1_loss_noise/2*mul2 + g3_t1_loss_noise/4*mul3) + \
-                self.trans_mult*(g1_t2_loss_noise*mul1 + g2_t2_loss_noise/2*mul2 + g3_t2_loss_noise/4*mul3) + \
+                self.trans_mult*(g1_t2_loss_noise*mul1 + g2_t2_loss_noise/2*mul2 + g3_t2_loss_noise/4*mul3)
         
         g_loss = 1*(g1_loss*mul1 + g2_loss/2*mul2 + g3_loss/4*mul3) + \
                 self.trans_mult*(g1_t1_loss*mul1 + g2_t1_loss/2*mul2 + g3_t1_loss/4*mul3) + \

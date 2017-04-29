@@ -179,6 +179,8 @@ class GAN:
         self.d_bn_idx += 1
         return d_bn
     def __init__(self, options):
+        self.drop_rate = tf.placeholder_with_default(.2, None, 'dropoutrate')
+        
         self.options = options
         self.d_bn_idx = 0
         self.g_text_bn = ops.batch_norm(name='g_text_bn')
@@ -197,6 +199,11 @@ class GAN:
         self.d_idx = 0
         self.g_bn_idx = 0
 
+    def drop_gen(self, x):
+        return tf.nn.dropout(x, 1 - self.drop_rate)
+
+    def drop_disc(self, x):
+        return x
     def g_bn(self):
         g_bn = ops.batch_norm(name='g_bn_clean' + str(self.g_bn_idx))
         self.g_bn_idx += 1
@@ -425,7 +432,7 @@ class GAN:
         d1_loss_gen = d1_loss_gen_noise + tf.reduce_mean(c_e(p_1_gen_txt_logit, neg_ex))
         d2_loss_gen = d2_loss_gen_noise + tf.reduce_mean(c_e(p_2_gen_txt_logit, neg_ex))
         d3_loss_gen = d3_loss_gen_noise + tf.reduce_mean(c_e(p_3_gen_txt_logit, neg_ex))
-        
+                
         g1_loss = g1_loss_noise + tf.reduce_mean(c_e(p_1_fake_txt_logit, pos_ex))
         g2_loss = g2_loss_noise + tf.reduce_mean(c_e(p_2_fake_txt_logit, pos_ex))
         g3_loss = g3_loss_noise + tf.reduce_mean(c_e(p_3_fake_txt_logit, pos_ex))
@@ -484,11 +491,6 @@ class GAN:
         g3_t2_loss = g3_t2_loss_noise + tf.reduce_mean(c_e(p_3_t2_fake_txt_logit, pos_ex))
         
         
-        
-        
-        
-        
-        
         disc_real_losses = [concat(1,[c_e(p_1_real_img_logit, pos_ex), c_e(p_1_real_txt_logit, pos_ex)]),
                             concat(1,[c_e(p_2_real_img_logit, pos_ex), c_e(p_2_real_txt_logit, pos_ex)]),
                             concat(1,[c_e(p_3_real_img_logit, pos_ex), c_e(p_3_real_txt_logit, pos_ex)])]
@@ -536,8 +538,8 @@ class GAN:
         self.past_fakes = tf.placeholder('float32', shape=[None])
         real_time = self.real_acts * .1 + self.past_reals * .9
         fake_time = self.fake_acts * .1 + self.past_fakes * .9
-        lambda_act = 0.1
-        lambda_act_time = 10
+        lambda_act = 30
+        lambda_act_time = 1000
         lambda_act_disc = .0001
         
         act_regs = tf.reduce_mean(tf.square ( self.real_acts - self.fake_acts)) * lambda_act
@@ -545,15 +547,27 @@ class GAN:
         act_time_regs = tf.reduce_mean(tf.square(fake_time - real_time)) * lambda_act_time
         
         d_loss_noise = d_loss_real_img + \
+                self.trans_mult*(d_loss_trans_img + d_loss_trans2_img) + \
                 .2*(d_loss_wrong + d_loss_wrongcap1 + d_loss_wrongcap2) + \
-                d1_loss_gen_noise + d2_loss_gen_noise + d3_loss_gen_noise
+                d1_loss_gen_noise + d2_loss_gen_noise + d3_loss_gen_noise + \
+                self.trans_mult*(d1_t1_loss_gen_noise + d2_t1_loss_gen_noise + d3_t1_loss_gen_noise) + \
+                self.trans_mult*(d1_t2_loss_gen_noise + d2_t2_loss_gen_noise + d3_t2_loss_gen_noise)
         d_loss = d_loss_real + \
+                self.trans_mult*(d_loss_trans + d_loss_trans2) + \
                 .2*(d_loss_wrong + d_loss_wrongcap1 + d_loss_wrongcap2)  + \
-                d1_loss_gen + d2_loss_gen + d3_loss_gen
+                d1_loss_gen + d2_loss_gen + d3_loss_gen + \
+                self.trans_mult*(d1_t1_loss_gen + d2_t1_loss_gen + d3_t1_loss_gen) + \
+                self.trans_mult*(d1_t2_loss_gen + d2_t2_loss_gen + d3_t2_loss_gen)
         
-        g_loss_noise = 1*(g1_loss_noise*mul1 + g2_loss_noise/2*mul2 + g3_loss_noise/4*mul3)
+        g_loss_noise = 1*(g1_loss_noise*mul1 + g2_loss_noise/2*mul2 + g3_loss_noise/4*mul3) + \
+                self.trans_mult*(g1_t1_loss_noise*mul1 + g2_t1_loss_noise/2*mul2 + g3_t1_loss_noise/4*mul3) + \
+                self.trans_mult*(g1_t2_loss_noise*mul1 + g2_t2_loss_noise/2*mul2 + g3_t2_loss_noise/4*mul3) + \
+                act_regs + act_time_regs
         
-        g_loss = 1*(g1_loss*mul1 + g2_loss/2*mul2 + g3_loss/4*mul3)
+        g_loss = 1*(g1_loss*mul1 + g2_loss/2*mul2 + g3_loss/4*mul3) + \
+                self.trans_mult*(g1_t1_loss*mul1 + g2_t1_loss/2*mul2 + g3_t1_loss/4*mul3) + \
+                self.trans_mult*(g1_t2_loss*mul1 + g2_t2_loss/2*mul2 + g3_t2_loss/4*mul3) + \
+                act_regs + act_time_regs
                
 
         t_vars = tf.trainable_variables()
@@ -562,8 +576,8 @@ class GAN:
         g2_vars = [var for var in t_vars if 'g2_' in var.name]
         g3_vars = [var for var in t_vars if 'g3_' in var.name]
         
-        d_loss_reg = tf.reduce_sum([tf.reduce_sum(tf.square(var)) * 1e-5 for var in d_vars])
-        g_loss_reg = tf.reduce_sum([tf.reduce_sum(tf.square(var))*1e-5 for var in g1_vars + g2_vars + g3_vars])
+        d_loss_reg = tf.reduce_sum([tf.reduce_sum(tf.square(var)) * 1e-3 for var in d_vars])
+        g_loss_reg = tf.reduce_sum([tf.reduce_sum(tf.square(var))*1e-4 for var in g1_vars + g2_vars + g3_vars])
         self.l2_disc = [v.assign(v*.99) for v in d_vars]
         #self.wgan_clip_1eneg3 = [v.assign(tf.clip_by_value(v, -0.001, 0.001)) for v in d_vars]
         #self.wgan_clip_1eneg2 = [v.assign(tf.clip_by_value(v, -0.01, 0.01)) for v in d_vars]
@@ -652,9 +666,7 @@ class GAN:
             'disc_fake_losses' : disc_fake_losses,
             'disc_real_vals' : disc_real_vals,
             'disc_wrong_vals': disc_wrong_vals,
-            'disc_fake_vals' : disc_fake_vals,
-            'output_p_3_gen_txt_logit' : p_3_gen_txt_logit,
-            'output_p_3_gen_img_logit' : p_3_gen_img_logit
+            'disc_fake_vals' : disc_fake_vals
         }
 
         
@@ -683,7 +695,7 @@ class GAN:
         self.g_optim = optimizer.apply_gradients(capped_gvs)
         self.g_gvs = [grad for grad, var in gvs if grad is not None]
         
-        optimizer = tf.train.AdamOptimizer(1e-4, beta1 = beta1,beta2 = beta2)
+        optimizer = tf.train.AdamOptimizer(3e-5, beta1 = beta1,beta2 = beta2)
         gvs = optimizer.compute_gradients(
             d_loss_noise * noise_indicator + d_loss * (1-noise_indicator) + d_loss_reg,
             var_list=variables['d_vars'])
@@ -974,20 +986,20 @@ class GAN:
         z_concat3 = ops.lrelu( bnt3(ops.linear(z_rec_target, self.options['t_dim'], 'g3_embedding')))
         z_ = ops.linear(z_concat, self.options['gf_dim']*16*s16*s16, 'g1_h0_lin')
         h0 = reshape(z_, [-1, s16, s16, self.options['gf_dim'] * 16])
-        h0 = ops.lrelu(self.g_bn0(h0), name = 'g1_pre2')
+        h0 = ops.lrelu(self.drop_gen(self.g_bn0(h0)), name = 'g1_pre2')
         
         #h0 = self.add_residual(h0, z_concat, name_func=self.g_name)
         
         #h0 = self.add_residual_standard(h0, None, k_h = 3, k_w = 3, text_filters=4)
         #h1 = tf.image.resize_nearest_neighbor(h0, [s8, s8])
         h1 = ops.deconv2d(h0, [self.options['batch_size'], s8, s8, self.options['gf_dim']*8],name='g1_h1')
-        h1 = ops.lrelu(self.g_bn1(h1), name = 'g1_pre43234')
+        h1 = ops.lrelu(self.drop_gen(self.g_bn1(h1)), name = 'g1_pre43234')
         
         stack1 = self.add_stackGan(h1, s8, z_concat, name_func=self.g_name)
         
         stack1out = ops.deconv2d(bno1(stack1), [self.options['batch_size'], s8, s8, self.options['gf_dim']*16],d_h=1, d_w=1,
                                  k_h = 3, k_w = 3,name=self.g_name())
-        stack1out = ops.lrelu(bn11(stack1out))
+        stack1out = ops.lrelu(self.drop_gen(bn11(stack1out)))
         stack1out = ops.deconv2d(stack1out, [self.options['batch_size'], s4, s4, 3], k_h = 3, k_w = 3,name=self.g_name())
         
         stack2 = ops.deconv2d(stack1, 
@@ -995,7 +1007,7 @@ class GAN:
         
         stack2 = concat(3, [stack2, ops.noised(stack1out, self.noise_gen)])
         
-        stack2 = ops.lrelu(bn20(stack2))
+        stack2 = ops.lrelu(self.drop_gen(bn20(stack2)))
         '''
         stack2 = ops.deconv2d(stack2, [self.options['batch_size'], s4, s4, self.options['gf_dim']*16],
                                  k_h = 5, k_w = 5,d_h=1, d_w=1,name=self.g2_name())
@@ -1005,13 +1017,13 @@ class GAN:
         stack2 = ops.deconv2d(stack2, [self.options['batch_size'], s4, s4, self.options['gf_dim']*4],
                                  k_h = 5, k_w = 5,d_h=1, d_w=1,name=self.g2_name())
         
-        stack2 = ops.lrelu(bn22(stack2))
+        stack2 = ops.lrelu(self.drop_gen(bn22(stack2)))
         
         stack2 = self.add_stackGan(stack2, s4, z_concat2, k_h = 7, k_w = 7, name_func=self.g2_name)
 
         stack2out = ops.deconv2d(bno2(stack2), [self.options['batch_size'], s4, s4, self.options['gf_dim']*8],
                                  k_h = 5, k_w = 5,d_h=1, d_w=1,name=self.g2_name())
-        stack2out = ops.lrelu(bn12(stack2out))
+        stack2out = ops.lrelu(self.drop_gen(bn12(stack2out)))
         stack2out = ops.deconv2d(stack2out, [self.options['batch_size'], s2, s2, 3], k_h = 3, k_w = 3,name=self.g2_name())
         
         stack3 = ops.deconv2d(stack2, 
@@ -1019,7 +1031,7 @@ class GAN:
         
         stack3 = concat(3, [stack3, ops.noised(stack2out, self.noise_gen)])
         
-        stack3 = ops.lrelu(bn30(stack3))
+        stack3 = ops.lrelu(self.drop_gen(bn30(stack3)))
         '''
         stack3 = ops.deconv2d(stack3, [self.options['batch_size'], s2, s2, self.options['gf_dim']*8],
                                  k_h = 5, k_w = 5,d_h=1, d_w=1,name=self.g3_name())
@@ -1029,7 +1041,7 @@ class GAN:
         stack3 = ops.deconv2d(stack3, [self.options['batch_size'], s2, s2, self.options['gf_dim']*2],
                                  k_h = 7, k_w = 7,d_h=1, d_w=1,name=self.g3_name())
         
-        stack3 = ops.lrelu(bn32(stack3))
+        stack3 = ops.lrelu(self.drop_gen(bn32(stack3)))
         ex_f = self.options['gf_dim']*8
         stack3 = self.add_stackGan(stack3, s2, z_concat3, k_h = 9, k_w = 9, name_func=self.g3_name)
         stack3 = self.add_residual_pre(stack3, hidden_filters = ex_f, z_concat=None, k_h = 9, k_w = 9,name_func=self.g3_name)
@@ -1042,7 +1054,7 @@ class GAN:
 
         stack3out = ops.deconv2d(bno3(stack3), [self.options['batch_size'], s2, s2, self.options['gf_dim']*8],d_h=1, d_w=1,
                                  k_h = 5, k_w = 5,name=self.g2_name())
-        stack3out = ops.lrelu(bn13(stack3out))
+        stack3out = ops.lrelu(self.drop_gen(bn13(stack3out)))
         
         
         stack3out = ops.deconv2d(stack3out, [self.options['batch_size'], s, s, 3], 
@@ -1097,10 +1109,10 @@ class GAN:
             image, [self.options['batch_size'], -1]), num_kernels=3, kernel_dim=3, reuse = reuse, lin_name = 'd_minilin1')*10
         t_text_embedding = concat(1, [t_text_embedding, mini_information])
         ddim = self.options['df_dim']
-        h0 = ops.lrelu(ops.conv2d(image, ddim, name = 'd_h0_conv'), name = 'd_pre1') #32
-        h1 = ops.lrelu(ops.conv2d(h0, ddim*2, name = 'd_h1_conv'), name = 'd_pre2') #16
-        h2 = ops.lrelu(ops.conv2d(h1, ddim*4, name = 'd_h2_conv'), name = 'd_pre3') #8
-        h3 = ops.lrelu(ops.conv2d(h2, ddim*8, name = 'd_h3_conv'), name = 'd_pre4') #4
+        h0 = ops.lrelu(self.drop_disc(ops.conv2d(image, ddim, name = 'd_h0_conv')), name = 'd_pre1') #32
+        h1 = ops.lrelu(self.drop_disc(ops.conv2d(h0, ddim*2, name = 'd_h1_conv')), name = 'd_pre2') #16
+        h2 = ops.lrelu(self.drop_disc(ops.conv2d(h1, ddim*4, name = 'd_h2_conv')), name = 'd_pre3') #8
+        h3 = ops.lrelu(self.drop_disc(ops.conv2d(h2, ddim*8, name = 'd_h3_conv')), name = 'd_pre4') #4
         
         h3_raw_lin = reshape(h3, [self.options['batch_size'], -1])
         h2_lin = reshape(h2, [self.options['batch_size'], -1])
@@ -1131,7 +1143,7 @@ class GAN:
         txt2 = ops.linear(t_text_embedding, self.options['t_dim']/2,'d_embedding2')
         txt2 = tf.expand_dims(txt2,1)
         txt2 = tf.expand_dims(txt2,2)
-        tiled2 = ops.lrelu(tf.tile(txt2, [1,int(s/8),int(s/8),1], name='tiled_embeddings2'))
+        tiled2 = ops.lrelu(tf.tile(self.drop_disc(txt2), [1,int(s/8),int(s/8),1], name='tiled_embeddings2'))
         
         h2_concat = concat( 3, [h2, tiled2], name='h2_concat')
         h2_new = ops.conv2d(h2_concat, self.options['df_dim']*4, 1,1,1,1, name = 'd_h2_conv_new') #4
@@ -1139,7 +1151,7 @@ class GAN:
         
         h_all_text = concat(1, [h3_new_out, h2_new_out], 'h_all_txt')
         
-        h5 = ops.linear(ops.lrelu(h_all_text), 1, 'd_h3_lin')
+        h5 = ops.linear(ops.lrelu(self.drop_disc(h_all_text)), 1, 'd_h3_lin')
         
         h0mean, h0std = tf.nn.moments(h0, axes=[1,2])
         h0spread = spread(h0)
@@ -1200,10 +1212,10 @@ class GAN:
             image, [self.options['batch_size'], -1]), num_kernels=3, kernel_dim=3, reuse = reuse, lin_name = 'd_minilin1')*10
         t_text_embedding = concat(1, [t_text_embedding, mini_information])
         ddim = self.options['df_dim']
-        h0 = ops.lrelu(ops.conv2d(image, ddim, name = 'd_h0_conv'), name = 'd_pre1') #32
-        h1 = ops.lrelu(ops.conv2d(h0, ddim*2, name = 'd_h1_conv'), name = 'd_pre2') #16
-        h2 = ops.lrelu(ops.conv2d(h1, ddim*4, name = 'd_h2_conv'), name = 'd_pre3') #8
-        h3 = ops.lrelu(ops.conv2d(h2, ddim*8, name = 'd_h3_conv'), name = 'd_pre4') #4
+        h0 = ops.lrelu(self.drop_disc(ops.conv2d(image, ddim, name = 'd_h0_conv')), name = 'd_pre1') #32
+        h1 = ops.lrelu(self.drop_disc(ops.conv2d(h0, ddim*2, name = 'd_h1_conv')), name = 'd_pre2') #16
+        h2 = ops.lrelu(self.drop_disc(ops.conv2d(h1, ddim*4, name = 'd_h2_conv')), name = 'd_pre3') #8
+        h3 = ops.lrelu(self.drop_disc(ops.conv2d(h2, ddim*8, name = 'd_h3_conv')), name = 'd_pre4') #4
         
         h3_raw_lin = reshape(h3, [self.options['batch_size'], -1])
         h2_lin = reshape(h2, [self.options['batch_size'], -1])
@@ -1234,7 +1246,7 @@ class GAN:
         txt2 = ops.linear(t_text_embedding, self.options['t_dim']/4,'d_embedding2')
         txt2 = tf.expand_dims(txt2,1)
         txt2 = tf.expand_dims(txt2,2)
-        tiled2 = ops.lrelu(tf.tile(txt2, [1,int(s/8),int(s/8),1], name='tiled_embeddings2'))
+        tiled2 = ops.lrelu(tf.tile(self.drop_disc(txt2), [1,int(s/8),int(s/8),1], name='tiled_embeddings2'))
         
         h2_concat = concat( 3, [h2, tiled2], name='h2_concat')
         h2_new = ops.conv2d(h2_concat, self.options['df_dim']*4, 1,1,1,1, name = 'd_h2_conv_new') #4
@@ -1242,7 +1254,7 @@ class GAN:
         
         h_all_text = concat(1, [h3_new_out, h2_new_out], 'h_all_txt')
         
-        h5 = ops.linear(ops.lrelu(h_all_text), 1, 'd_h3_lin')
+        h5 = ops.linear(ops.lrelu(self.drop_disc(h_all_text)), 1, 'd_h3_lin')
         
         h0mean, h0std = tf.nn.moments(h0, axes=[1,2])
         h0spread = spread(h0)
@@ -1303,10 +1315,10 @@ class GAN:
             image, [self.options['batch_size'], -1]), num_kernels=3, kernel_dim=3, reuse = reuse, lin_name = 'd_minilin1')*10
         t_text_embedding = concat(1, [t_text_embedding, mini_information])
         ddim = self.options['df_dim']
-        h0 = ops.lrelu(ops.conv2d(image, ddim, name = 'd_h0_conv'), name = 'd_pre1') #32
-        h1 = ops.lrelu(ops.conv2d(h0, ddim*2, name = 'd_h1_conv'), name = 'd_pre2') #16
-        h2 = ops.lrelu(ops.conv2d(h1, ddim*4, name = 'd_h2_conv'), name = 'd_pre3') #8
-        h3 = ops.lrelu(ops.conv2d(h2, ddim*8, name = 'd_h3_conv'), name = 'd_pre4') #4
+        h0 = ops.lrelu(self.drop_disc(ops.conv2d(image, ddim, name = 'd_h0_conv')), name = 'd_pre1') #32
+        h1 = ops.lrelu(self.drop_disc(ops.conv2d(h0, ddim*2, name = 'd_h1_conv')), name = 'd_pre2') #16
+        h2 = ops.lrelu(self.drop_disc(ops.conv2d(h1, ddim*4, name = 'd_h2_conv')), name = 'd_pre3') #8
+        h3 = ops.lrelu(self.drop_disc(ops.conv2d(h2, ddim*8, name = 'd_h3_conv')), name = 'd_pre4') #4
         
         h3_raw_lin = reshape(h3, [self.options['batch_size'], -1])
         h2_lin = reshape(h2, [self.options['batch_size'], -1])
@@ -1337,7 +1349,7 @@ class GAN:
         txt2 = ops.linear(t_text_embedding, self.options['t_dim']/8,'d_embedding2')
         txt2 = tf.expand_dims(txt2,1)
         txt2 = tf.expand_dims(txt2,2)
-        tiled2 = ops.lrelu(tf.tile(txt2, [1,int(s/8),int(s/8),1], name='tiled_embeddings2'))
+        tiled2 = ops.lrelu(tf.tile(self.drop_disc(txt2), [1,int(s/8),int(s/8),1], name='tiled_embeddings2'))
         
         h2_concat = concat( 3, [h2, tiled2], name='h2_concat')
         h2_new = ops.conv2d(h2_concat, self.options['df_dim']*4, 1,1,1,1, name = 'd_h2_conv_new') #4
@@ -1345,7 +1357,7 @@ class GAN:
         
         h_all_text = concat(1, [h3_new_out, h2_new_out], 'h_all_txt')
         
-        h5 = ops.linear(ops.lrelu(h_all_text), 1, 'd_h3_lin')
+        h5 = ops.linear(ops.lrelu(self.drop_disc(h_all_text)), 1, 'd_h3_lin')
         
         h0mean, h0std = tf.nn.moments(h0, axes=[1,2])
         h0spread = spread(h0)
